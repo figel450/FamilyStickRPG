@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Stick RPG</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- START SCREEN -->
+    <div id="startScreen" class="overlay">
+        <h1>Family Stick RPG</h1>
+        <h2>Select Your Character</h2>
+        <div class="character-select">
+            <button id="btnAsher" class="char-btn">
+                <h3>Asher</h3>
+                <p>Blue Backpack<br>Special: Dumplings Bonus</p>
+            </button>
+            <button id="btnElliot" class="char-btn">
+                <h3>Elliot</h3>
+                <p>Red Backward Cap<br>Special: Bento Bonus</p>
+            </button>
+        </div>
+    </div>
+
+    <!-- GAME UI -->
+    <div id="gameUI" class="hidden">
+        <div class="top-bar">
+            <div class="stat-box">Time: <span id="clockDisplay">08:00 AM</span></div>
+            <div class="stat-box">Energy: <span id="energyDisplay">100</span>/100</div>
+            <div class="stat-box">Intelligence: <span id="intelDisplay">0</span></div>
+            <div class="stat-box">Strength: <span id="strDisplay">0</span></div>
+            <div class="stat-box">Crafting: <span id="craftDisplay">0</span></div>
+            <div class="stat-box">Bits: <span id="bitsDisplay">0</span></div>
+            <button id="btnInstructions" class="dialog-btn" style="padding: 5px 10px; font-size: 14px;">Instructions</button>
+        </div>
+        
+        <div class="inventory-bar">
+            <strong>Companions:</strong> <span id="companionDisplay">None</span> |
+            <strong>Treehouse:</strong> <span id="treehouseDisplay">0%</span> |
+            <strong>Items:</strong> <span id="itemDisplay">None</span>
+        </div>
+    </div>
+
+    <!-- MAIN CANVAS -->
+    <canvas id="gameCanvas" class="hidden"></canvas>
+
+    <!-- DIALOG BOXES -->
+    <div id="dialogOverlay" class="hidden overlay">
+        <div class="dialog-box">
+            <h2 id="dialogTitle">Title</h2>
+            <p id="dialogText">Text</p>
+            <div id="dialogButtons"></div>
+        </div>
+    </div>
+
+    <!-- MINIGAME UI OVERLAYS -->
+    <div id="basketballUI" class="hidden overlay minigame-overlay">
+        <h2>BASKETBALL SHOOTOUT</h2>
+        <p>Press SPACE when the bar is in the GREEN zone!</p>
+        <div class="meter-bg">
+            <div class="meter-target"></div>
+            <div id="meterCursor" class="meter-cursor"></div>
+        </div>
+        <p id="bballMessage"></p>
+    </div>
+
+    <div id="dogUI" class="hidden overlay minigame-overlay">
+        <h2>DOG ATTACK!</h2>
+        <p>Press SPACE to jump fences!</p>
+        <p id="dogMessage"></p>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
