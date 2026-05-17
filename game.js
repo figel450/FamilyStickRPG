@@ -82,27 +82,31 @@ const keys = { w: false, a: false, s: false, d: false, ' ': false, '1': false, '
 // ----------------------------------------------------
 // Zones & Map Data
 // ----------------------------------------------------
-canvas.width = 1200;
-canvas.height = 800;
+canvas.width = 900;
+canvas.height = 1400;
 
 // Top-left: House, Bottom-left: Downtown, Top-right: School/Church, Bottom-right: Sports/Wilderness
 const zones = [
-    { name: 'Office', x: 50, y: 50, w: 150, h: 60, color: '#1e3a8a', label: 'Office' },
-    { name: 'Bedroom', x: 50, y: 120, w: 150, h: 50, color: '#6366f1', label: 'Bedroom (Sleep)' },
-    { name: 'Garage', x: 50, y: 180, w: 150, h: 80, color: '#475569', label: 'Garage (3D)' },
-    { name: 'Treehouse', x: 220, y: 50, w: 150, h: 210, color: '#854d0e', label: 'Backyard Treehouse' },
+    // Top-Left Cluster (Home)
+    { name: 'Office', x: 50, y: 50, w: 150, h: 80, color: '#1e3a8a', label: 'Office' },
+    { name: 'Bedroom', x: 50, y: 150, w: 150, h: 80, color: '#6366f1', label: 'Bedroom (Sleep)' },
+    { name: 'Garage', x: 50, y: 250, w: 150, h: 80, color: '#475569', label: 'Garage (3D)' },
+    { name: 'Treehouse', x: 250, y: 50, w: 150, h: 280, color: '#854d0e', label: 'Backyard Treehouse' },
     
-    { name: 'Sope Creek', x: 800, y: 50, w: 300, h: 150, color: '#dc2626', label: 'Sope Creek Elementary' },
-    { name: 'Grace Marietta', x: 800, y: 220, w: 300, h: 150, color: '#9333ea', label: 'Grace Marietta Church' },
+    // Top-Right Cluster
+    { name: 'Sope Creek', x: 500, y: 50, w: 350, h: 120, color: '#dc2626', label: 'Sope Creek Elementary' },
+    { name: 'Grace Marietta', x: 500, y: 200, w: 350, h: 120, color: '#9333ea', label: 'Grace Marietta Church' },
+    { name: 'Taj House', x: 500, y: 350, w: 350, h: 120, color: '#0d9488', label: "Rohan & Taj's House" },
     
-    { name: 'GP Center', x: 50, y: 400, w: 200, h: 150, color: '#0f172a', label: 'GP Center (Dad)' },
-    { name: 'Fugu Express', x: 50, y: 600, w: 120, h: 100, color: '#ea580c', label: 'Fugu Express' },
-    { name: 'Home Depot', x: 190, y: 600, w: 150, h: 100, color: '#f97316', label: 'Home Depot' },
+    // Mid-Left Cluster
+    { name: 'GP Center', x: 50, y: 500, w: 350, h: 200, color: '#0f172a', label: 'GP Center (Dad)' },
     
-    { name: 'Sports Complex', x: 600, y: 600, w: 250, h: 150, color: '#2563eb', label: 'Sports Complex' },
-    { name: 'Wilderness', x: 900, y: 600, w: 200, h: 150, color: '#166534', label: 'Fall Creek Falls' },
+    // Bottom Cluster
+    { name: 'Fugu Express', x: 50, y: 800, w: 200, h: 150, color: '#ea580c', label: 'Fugu Express' },
+    { name: 'Home Depot', x: 300, y: 800, w: 250, h: 150, color: '#f97316', label: 'Home Depot' },
+    { name: 'Sports Complex', x: 600, y: 800, w: 250, h: 150, color: '#2563eb', label: 'Sports Complex' },
     
-    { name: 'Taj House', x: 500, y: 50, w: 200, h: 150, color: '#0d9488', label: "Rohan & Taj's House" }
+    { name: 'Wilderness', x: 50, y: 1050, w: 800, h: 250, color: '#166534', label: 'Fall Creek Falls' }
 ];
 
 // NPCs
@@ -811,15 +815,15 @@ function drawOverworld() {
         ctx.fillStyle = z.color;
         ctx.fillRect(z.x, z.y, z.w, z.h);
         ctx.fillStyle = '#fff';
-        ctx.font = '14px Verdana';
-        ctx.fillText(z.label, z.x + 5, z.y + 20);
+        ctx.font = '24px Verdana';
+        ctx.fillText(z.label, z.x + 5, z.y + 25);
         
         if (z.name === 'Treehouse') {
-            ctx.font = '12px Verdana';
-            ctx.fillText(`Build: ${state.treehouseBuildCount}/10`, z.x + 5, z.y + 45);
-            ctx.fillText(`Couch: ${state.hasTreehouseCouch ? 'Yes' : 'No'}`, z.x + 5, z.y + 65);
-            ctx.fillText(`TV: ${state.hasTreehouseTV ? 'Yes' : 'No'}`, z.x + 5, z.y + 85);
-            ctx.fillText(`LEDs: ${state.hasTreehouseLEDs ? 'Yes' : 'No'}`, z.x + 5, z.y + 105);
+            ctx.font = '20px Verdana';
+            ctx.fillText(`Build: ${state.treehouseBuildCount}/10`, z.x + 5, z.y + 55);
+            ctx.fillText(`Couch: ${state.hasTreehouseCouch ? 'Yes' : 'No'}`, z.x + 5, z.y + 80);
+            ctx.fillText(`TV: ${state.hasTreehouseTV ? 'Yes' : 'No'}`, z.x + 5, z.y + 105);
+            ctx.fillText(`LEDs: ${state.hasTreehouseLEDs ? 'Yes' : 'No'}`, z.x + 5, z.y + 130);
         }
     }
     
@@ -846,7 +850,7 @@ function drawOverworld() {
     
     // Draw interaction prompt if near zone/npc
     ctx.fillStyle = '#fff';
-    ctx.font = '16px Verdana';
+    ctx.font = '24px Verdana';
     ctx.fillText("WASD to Move. Press 'E' near buildings/people.", 10, 780);
 }
 

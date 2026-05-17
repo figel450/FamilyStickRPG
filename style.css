@@ -126,3 +126,17 @@ body { background-color: #222; color: #fff; overflow: hidden; user-select: none;
 #leaderboardTable tr:nth-child(2) { color: #cbd5e1; }
 #leaderboardTable tr:nth-child(3) { color: #b45309; }
 
+
+#dogUI {
+    background-color: transparent;
+    justify-content: flex-start;
+    padding-top: 50px;
+    pointer-events: none;
+}
+#dogUI h2 {
+    text-shadow: 2px 2px 0 #000;
+}
+#dogUI p {
+    text-shadow: 1px 1px 0 #000;
+}
+
