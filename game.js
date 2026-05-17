@@ -167,10 +167,16 @@ window.addEventListener('keydown', e => {
     // Dialog Selection
     if (gameState === 'DIALOG' || gameState.startsWith('MINIGAME_MATH')) {
         let num = parseInt(e.key);
+        let btns = dialogButtons.querySelectorAll('button');
         if (!isNaN(num) && num > 0) {
-            let btns = dialogButtons.querySelectorAll('button');
             if (num <= btns.length) {
                 btns[num - 1].click();
+            }
+        } else if (gameState === 'DIALOG') {
+            if (e.key.toLowerCase() === 'e' || e.key === ' ') {
+                if (btns.length > 0) btns[0].click();
+            } else if (e.key.toLowerCase() === 'q') {
+                if (btns.length > 1) btns[btns.length - 1].click();
             }
         }
     }
@@ -248,16 +254,26 @@ function showDialog(title, text, buttons) {
 }
 
 function sleepAction() {
-    // Determine energy based on time. 
-    // Go to bed before 10 PM (22:00 = 1320 mins) -> 100% energy.
-    // 10PM - 12AM -> 80%. 12AM - 2AM -> 60%. Later -> 40%.
-    let currentHourOfDay = Math.floor(state.clockMinutes / 60) % 24;
-    let energyRestored = 100;
-    if (currentHourOfDay >= 22 || currentHourOfDay < 2) {
-        energyRestored = 80; // 10 PM to 2 AM
-        if (currentHourOfDay >= 0 && currentHourOfDay < 2) energyRestored = 60; // 12 AM to 2 AM
-    } else if (currentHourOfDay >= 2 && currentHourOfDay < 7) {
-        energyRestored = 40; // 2 AM to 7 AM
+    let currentMinsOfDay = state.clockMinutes % (24 * 60);
+    
+    // 7am = 420 mins, 7pm = 1140 mins
+    if (currentMinsOfDay >= 420 && currentMinsOfDay < 1140) {
+        showDialog("Not Bedtime!", "It's not bedtime yet. You should find another way to get energy.", [{label:"[1] Okay", action:()=>{}}]);
+        return;
+    }
+    
+    let energyRestored = 0;
+    // 7pm to 9:30pm (1140 to 1290) -> 100 energy
+    if (currentMinsOfDay >= 1140 && currentMinsOfDay < 1290) {
+        energyRestored = 100;
+    } 
+    // 9:30pm to 12:00am (1290 to 1440/0) -> 75 energy
+    else if (currentMinsOfDay >= 1290 && currentMinsOfDay <= 1440) {
+        energyRestored = 75;
+    } 
+    // 12am to 7am (0 to 420) -> 70 ramping down to 0
+    else if (currentMinsOfDay >= 0 && currentMinsOfDay < 420) {
+        energyRestored = Math.floor(70 * (1 - (currentMinsOfDay / 420)));
     }
     
     state.energy = Math.min(state.maxEnergy, state.energy + energyRestored);
@@ -268,7 +284,12 @@ function sleepAction() {
     state.companion = null;
     
     // Jump to 7 AM next day
-    state.clockMinutes = Math.floor(state.clockMinutes / (24 * 60)) * 24 * 60 + (24 * 60) + (7 * 60); 
+    if (currentMinsOfDay < 420) {
+        // It's already the "next day" numerically
+        state.clockMinutes = Math.floor(state.clockMinutes / (24 * 60)) * 24 * 60 + (7 * 60); 
+    } else {
+        state.clockMinutes = Math.floor(state.clockMinutes / (24 * 60)) * 24 * 60 + (24 * 60) + (7 * 60); 
+    }
     
     updateUI();
     
@@ -706,6 +727,12 @@ function generateMathOptions(a, b, correct, isEntry) {
                     }
                 } else {
                     applyStatChange("Math Test Failed", 60, 10, { fun: -10 });
+                    if (!isEntry) {
+                        state.inTargetProgram = false;
+                        setTimeout(() => {
+                            showDialog("Failed!", "You got the Target Math Question wrong and were kicked out of the program!", [{label:"[1] Dang it", action:()=>{}}]);
+                        }, 100);
+                    }
                 }
             },
             keepOpen: true
@@ -713,7 +740,8 @@ function generateMathOptions(a, b, correct, isEntry) {
     });
     
     gameState = 'MINIGAME_MATH';
-    showDialog(`Math Test: ${a} x ${b} = ?`, "Choose the correct answer:", buttons);
+    let warning = isEntry ? "" : " (WARNING: Wrong answer removes you from Target Program!)";
+    showDialog(`Math Test: ${a} x ${b} = ?`, `Choose the correct answer:${warning}`, buttons);
 }
 
 // ----------------------------------------------------
