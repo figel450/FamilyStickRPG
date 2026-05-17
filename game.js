@@ -686,21 +686,41 @@ function drawStickFigure(x, y, headColor) {
 // ----------------------------------------------------
 // Minigame: Math (Sope Creek)
 // ----------------------------------------------------
+let mathState = { active: false, timer: 0, maxTime: 0, isEntry: false, questionsAnswered: 0, lastTick: 0, a: 0, b: 0, warning: "" };
+
 function startEntryMath() {
-    let a = Math.floor(Math.random() * 9) + 1;
-    let b = Math.floor(Math.random() * 9) + 1;
-    let correct = a * b;
-    generateMathOptions(a, b, correct, true);
+    mathState.isEntry = true;
+    mathState.questionsAnswered = 0;
+    nextMathQuestion();
 }
 
 function startTargetMath() {
-    let a = Math.floor(Math.random() * 9) + 1;
-    let b = Math.floor(Math.random() * 90) + 10;
-    let correct = a * b;
-    generateMathOptions(a, b, correct, false);
+    mathState.isEntry = false;
+    mathState.questionsAnswered = 0;
+    nextMathQuestion();
 }
 
-function generateMathOptions(a, b, correct, isEntry) {
+function nextMathQuestion() {
+    let a, b, timeLimit;
+    if (mathState.isEntry) {
+        a = Math.floor(Math.random() * 9) + 1;
+        b = Math.floor(Math.random() * 9) + 1;
+        timeLimit = 5;
+        mathState.warning = ` (Question ${mathState.questionsAnswered + 1}/3)`;
+    } else {
+        a = Math.floor(Math.random() * 9) + 1;
+        b = Math.floor(Math.random() * 90) + 10;
+        timeLimit = 30;
+        mathState.warning = " (WARNING: Wrong answer removes you from Target Program!)";
+    }
+    mathState.a = a;
+    mathState.b = b;
+    
+    let correct = a * b;
+    generateMathOptions(correct, timeLimit);
+}
+
+function generateMathOptions(correct, timeLimit) {
     let answers = [correct];
     while(answers.length < 4) {
         let wrong = correct + (Math.floor(Math.random() * 20) - 10);
@@ -715,24 +735,11 @@ function generateMathOptions(a, b, correct, isEntry) {
         return {
             label: `[${idx+1}] ${ans}`,
             action: () => {
+                if (!mathState.active) return;
                 if (ans === correct) {
-                    if (isEntry) {
-                        state.inTargetProgram = true;
-                        applyStatChange("Math Test Passed!", 60, 10, { fun: 20 });
-                        setTimeout(() => {
-                            showDialog("Passed!", "You passed the entry test and are now in the Target Program!", [{label:"[1] Sweet", action:()=>{}}]);
-                        }, 100);
-                    } else {
-                        applyStatChange("Target Math", 180, 40, { intel: 30, fun: 10 });
-                    }
+                    mathTestSuccess();
                 } else {
-                    applyStatChange("Math Test Failed", 60, 10, { fun: -10 });
-                    if (!isEntry) {
-                        state.inTargetProgram = false;
-                        setTimeout(() => {
-                            showDialog("Failed!", "You got the Target Math Question wrong and were kicked out of the program!", [{label:"[1] Dang it", action:()=>{}}]);
-                        }, 100);
-                    }
+                    mathTestFailed(false);
                 }
             },
             keepOpen: true
@@ -740,8 +747,53 @@ function generateMathOptions(a, b, correct, isEntry) {
     });
     
     gameState = 'MINIGAME_MATH';
-    let warning = isEntry ? "" : " (WARNING: Wrong answer removes you from Target Program!)";
-    showDialog(`Math Test: ${a} x ${b} = ?`, `Choose the correct answer:${warning}`, buttons);
+    mathState.active = true;
+    mathState.timer = timeLimit;
+    mathState.maxTime = timeLimit;
+    mathState.lastTick = performance.now();
+    
+    showDialog(`Math Test: Time Left ${timeLimit}s`, `What is ${mathState.a} x ${mathState.b}?${mathState.warning}`, buttons);
+}
+
+function mathTestSuccess() {
+    mathState.active = false;
+    mathState.questionsAnswered++;
+    
+    if (mathState.isEntry) {
+        if (mathState.questionsAnswered >= 3) {
+            state.inTargetProgram = true;
+            applyStatChange("Math Test Passed!", 60, 10, { fun: 20 });
+            setTimeout(() => {
+                showDialog("Passed!", "You passed all 3 questions and are now in the Target Program!", [{label:"[1] Sweet", action:()=>{}}]);
+            }, 100);
+        } else {
+            // Next question immediately
+            nextMathQuestion();
+        }
+    } else {
+        applyStatChange("Target Math", 180, 40, { intel: 30, fun: 10 });
+        setTimeout(() => {
+            showDialog("Nailed It!", "Target Math complete. Massive Intelligence boost!", [{label:"[1] Nice", action:()=>{}}]);
+        }, 100);
+    }
+}
+
+function mathTestFailed(isTimeout) {
+    mathState.active = false;
+    applyStatChange("Math Test Failed", 60, 10, { fun: -10 });
+    
+    let msg = isTimeout ? "You ran out of time!" : "Wrong answer!";
+    
+    if (!mathState.isEntry) {
+        state.inTargetProgram = false;
+        setTimeout(() => {
+            showDialog("Failed!", `${msg} You were kicked out of the Target Program!`, [{label:"[1] Dang it", action:()=>{}}]);
+        }, 100);
+    } else {
+        setTimeout(() => {
+            showDialog("Failed!", `${msg} Try again later.`, [{label:"[1] Okay", action:()=>{}}]);
+        }, 100);
+    }
 }
 
 // ----------------------------------------------------
@@ -977,6 +1029,20 @@ function gameLoop(currentTime) {
         drawDogCountdown(currentTime);
     } else if (gameState === 'MINIGAME_DOG') {
         drawDogGame();
+    } else if (gameState === 'MINIGAME_MATH') {
+        if (mathState.active) {
+            let now = performance.now();
+            let elapsed = (now - mathState.lastTick) / 1000;
+            mathState.lastTick = now;
+            mathState.timer -= elapsed;
+            
+            if (mathState.timer <= 0) {
+                mathState.timer = 0;
+                mathTestFailed(true); // timed out
+            } else {
+                dialogTitle.innerText = `Math Test: Time Left ${Math.ceil(mathState.timer)}s`;
+            }
+        }
     }
     // MINIGAME_BBALL and DIALOG are handled via DOM overlays and separate animation loops
     
