@@ -329,7 +329,7 @@ function advanceTime(mins) {
     }
 }
 
-function applyStatChange(actionName, timeCost, energyCost, statsMap) {
+function applyStatChange(actionName, timeCost, energyCost, statsMap, onComplete = null) {
     let currentMinsOfDay = state.clockMinutes % (24 * 60);
     if (currentMinsOfDay >= 1290 || currentMinsOfDay < 420) {
         timeCost *= 2;
@@ -383,7 +383,9 @@ function applyStatChange(actionName, timeCost, energyCost, statsMap) {
     updateUI();
     
     // Show explicit result popup
-    showDialog(`${actionName} Complete!`, resultText, [{label: "[1] Awesome!", action: ()=>{}}]);
+    showDialog(`${actionName} Complete!`, resultText, [{label: "[1] Awesome!", action: ()=>{
+        if (onComplete) onComplete();
+    }}]);
     
     if(state.energy <= 0) {
         setTimeout(() => {
@@ -652,13 +654,13 @@ function triggerZone(zoneName) {
                 let statsMap = { fun: funBonus };
                 if (intelBonus > 0) statsMap.intel = intelBonus;
                 
-                applyStatChange(`Church with ${friend}`, 120, -energyBonus, statsMap);
-                
-                if (events.length > 0) {
-                    setTimeout(() => {
-                        showDialog(`Hung out with ${friend}!`, events.join("\n\n"), [{label:"[1] Awesome", action:()=>{}}]);
-                    }, 200);
-                }
+                applyStatChange(`Church with ${friend}`, 120, -energyBonus, statsMap, () => {
+                    if (events.length > 0) {
+                        setTimeout(() => {
+                            showDialog(`Hung out with ${friend}!`, events.join("\n\n"), [{label:"[1] Awesome", action:()=>{}}]);
+                        }, 200);
+                    }
+                });
                 
             }, keepOpen: true},
             { label: '[2] Leave', action: () => {} }
@@ -904,13 +906,14 @@ function generateMathOptions(correct, timeLimit) {
         }
     });
     
+    showDialog(`Math Test: Time Left ${timeLimit}s`, `What is ${mathState.a} x ${mathState.b}?${mathState.warning}`, buttons);
+    
+    // Set state AFTER showDialog to ensure it doesn't get overwritten back to 'DIALOG'
     gameState = 'MINIGAME_MATH';
     mathState.active = true;
     mathState.timer = timeLimit;
     mathState.maxTime = timeLimit;
     mathState.lastTick = performance.now();
-    
-    showDialog(`Math Test: Time Left ${timeLimit}s`, `What is ${mathState.a} x ${mathState.b}?${mathState.warning}`, buttons);
 }
 
 function mathTestSuccess() {
