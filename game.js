@@ -167,6 +167,8 @@ window.addEventListener('keydown', e => {
     
     // Dialog Selection
     if (gameState === 'DIALOG' || gameState.startsWith('MINIGAME_MATH')) {
+        if (document.activeElement.tagName === 'INPUT') return;
+        
         let num = parseInt(e.key);
         let btns = dialogButtons.querySelectorAll('button');
         if (!isNaN(num) && num > 0) {
@@ -174,7 +176,7 @@ window.addEventListener('keydown', e => {
                 btns[num - 1].click();
             }
         } else if (gameState === 'DIALOG') {
-            if (e.key.toLowerCase() === 'e' || e.key === ' ') {
+            if (e.key.toLowerCase() === 'e') {
                 if (btns.length > 0) btns[0].click();
             } else if (e.key.toLowerCase() === 'q') {
                 if (btns.length > 1) btns[btns.length - 1].click();
@@ -229,7 +231,7 @@ function updateUI() {
 function showDialog(title, text, buttons) {
     gameState = 'DIALOG';
     dialogTitle.innerText = title;
-    dialogText.innerText = text;
+    dialogText.innerHTML = text.replace(/\n/g, '<br>');
     dialogButtons.innerHTML = '';
     
     // Reset movement keys so we don't sprint off after closing
@@ -407,41 +409,43 @@ function handleInteraction() {
         let dist = Math.hypot(state.x - npc.x, state.y - npc.y);
         if (dist < 40) {
             if (npc.name === 'Mom') {
-                showDialog("Mom (Kim)", "Make sure you aren't staying up too late! I found a Couch for the treehouse, but it's super heavy.", [
-                    { label: '[1] Buy Couch ($500)', action: () => { 
-                        if (state.treehouseBuildCount < 10) {
-                            showDialog("Not Ready", "You need to finish building the physical treehouse first before installing furniture!", [{label:"[1] Okay", action:()=>{}}]);
-                        } else if (state.dollars < 500) {
+                let btns = [];
+                
+                if (state.treehouseBuildCount >= 10 && !state.hasTreehouseCouch) {
+                    btns.push({ label: `[${btns.length + 1}] Buy Couch ($500)`, action: () => { 
+                        if (state.dollars < 500) {
                             showDialog("Too expensive", "You don't have $500.", [{label:"[1] Okay", action:()=>{}}]);
                         } else if (state.strength < 500) {
                             showDialog("Too weak", "You need 500 Strength to lift and install this massive couch!", [{label:"[1] Okay", action:()=>{}}]);
-                        } else if (state.hasTreehouseCouch) {
-                            showDialog("Already Installed", "The couch is already in the treehouse!", [{label:"[1] Okay", action:()=>{}}]);
                         } else {
                             state.dollars -= 500;
                             state.hasTreehouseCouch = true;
                             updateUI();
                             showDialog("Success!", "You bought the Couch and installed it!", [{label:"[1] Nice", action:()=>{}}]);
                         }
-                    }, keepOpen: true },
-                    { label: '[2] Rest (Restore Energy, Takes Time)', action: () => {
-                        let missingEnergy = state.maxEnergy - state.energy;
-                        if (missingEnergy <= 0) {
-                            showDialog("Full Energy", "You already have full energy!", [{label:"[1] Okay", action:()=>{}}]);
-                        } else {
-                            let timeCost = 120;
-                            let currentMinsOfDay = state.clockMinutes % (24 * 60);
-                            if (currentMinsOfDay >= 1290 || currentMinsOfDay < 420) {
-                                timeCost *= 2;
-                            }
-                            advanceTime(timeCost);
-                            state.energy = state.maxEnergy;
-                            updateUI();
-                            showDialog("Rested!", `Mom made you a snack. You restored all your energy, but it took ${formatDuration(timeCost)}.`, [{label:"[1] Thanks Mom!", action:()=>{}}]);
+                    }, keepOpen: true });
+                }
+                
+                btns.push({ label: `[${btns.length + 1}] Rest (Restore Energy, Takes Time)`, action: () => {
+                    let missingEnergy = state.maxEnergy - state.energy;
+                    if (missingEnergy <= 0) {
+                        showDialog("Full Energy", "You already have full energy!", [{label:"[1] Okay", action:()=>{}}]);
+                    } else {
+                        let timeCost = 120;
+                        let currentMinsOfDay = state.clockMinutes % (24 * 60);
+                        if (currentMinsOfDay >= 1290 || currentMinsOfDay < 420) {
+                            timeCost *= 2;
                         }
-                    }, keepOpen: true },
-                    { label: '[3] Not right now', action: () => {} }
-                ]);
+                        advanceTime(timeCost);
+                        state.energy = state.maxEnergy;
+                        updateUI();
+                        showDialog("Rested!", `Mom made you a snack. You restored all your energy, but it took ${formatDuration(timeCost)}.`, [{label:"[1] Thanks Mom!", action:()=>{}}]);
+                    }
+                }, keepOpen: true });
+                
+                btns.push({ label: `[${btns.length + 1}] Leave`, action: () => {} });
+
+                showDialog("Mom (Kim)", "Need some energy? Or looking to buy that couch for the treehouse?", btns);
                 return;
             } else if (npc.name === 'Dad') {
                 showDialog("Dad (Kyle)", "Hey buddy. Want to help me with some Fusion 360 scripts? Or do you want to buy some LED lights?", [
@@ -669,17 +673,69 @@ function triggerZone(zoneName) {
             { label: '[3] Leave', action: () => {} }
         ]);
 function openHomeDepotStore() {
-    let msg = `You have:\n${state.nails} Nails\n${state.screws} Screws\n${state.lumber} Lumber\n\nWhat would you like to buy?`;
-    let updateStore = () => {
-        openHomeDepotStore();
-    };
+    let msg = `You have:
+Nails: ${state.nails}
+Screws: ${state.screws}
+Lumber: ${state.lumber}
+
+<div style="margin-top:15px; font-size:14px; text-align:left;">
+    <div style="margin-bottom:5px;">
+        <label style="display:inline-block; width:120px;">Nails ($1 ea):</label>
+        <input type="number" id="buyNails" value="0" min="0" style="width:60px; padding:2px; font-size:16px;">
+    </div>
+    <div style="margin-bottom:5px;">
+        <label style="display:inline-block; width:120px;">Screws ($1 ea):</label>
+        <input type="number" id="buyScrews" value="0" min="0" style="width:60px; padding:2px; font-size:16px;">
+    </div>
+    <div style="margin-bottom:5px;">
+        <label style="display:inline-block; width:120px;">Lumber ($10 ea):</label>
+        <input type="number" id="buyLumber" value="0" min="0" style="width:60px; padding:2px; font-size:16px;">
+    </div>
+    <div style="margin-top:10px; font-weight:bold; color:#facc15;">
+        Total Cost: $<span id="storeTotal">0</span> (You have $${state.dollars})
+    </div>
+</div>
+`;
     
     showDialog("Home Depot Store", msg, [
-        { label: '[1] Buy 5 Nails ($5)', action: () => { if(state.dollars >= 5){ state.dollars -= 5; state.nails+=5; updateUI(); updateStore(); } }, keepOpen: true },
-        { label: '[2] Buy 5 Screws ($5)', action: () => { if(state.dollars >= 5){ state.dollars -= 5; state.screws+=5; updateUI(); updateStore(); } }, keepOpen: true },
-        { label: '[3] Buy 1 Lumber ($10)', action: () => { if(state.dollars >= 10){ state.dollars -= 10; state.lumber+=1; updateUI(); updateStore(); } }, keepOpen: true },
-        { label: '[4] Leave', action: () => {} }
+        { label: '[1] Purchase', action: () => { 
+            let n = parseInt(document.getElementById('buyNails').value) || 0;
+            let s = parseInt(document.getElementById('buyScrews').value) || 0;
+            let l = parseInt(document.getElementById('buyLumber').value) || 0;
+            let cost = (n * 1) + (s * 1) + (l * 10);
+            
+            if (cost === 0) {
+                showDialog("Store", "You didn't buy anything.", [{label:"[1] Okay", action:()=>{}}]);
+            } else if (state.dollars >= cost) {
+                state.dollars -= cost;
+                state.nails += n;
+                state.screws += s;
+                state.lumber += l;
+                updateUI();
+                showDialog("Success", `Bought ${n} Nails, ${s} Screws, and ${l} Lumber for $${cost}!`, [{label:"[1] Nice", action:()=>{}}]);
+            } else {
+                showDialog("Too Expensive", `That costs $${cost}, but you only have $${state.dollars}.`, [{label:"[1] Okay", action:()=>openHomeDepotStore()}]);
+            }
+        }, keepOpen: true },
+        { label: '[2] Leave', action: () => {} }
     ]);
+    
+    // Live update total
+    setTimeout(() => {
+        let nInput = document.getElementById('buyNails');
+        let sInput = document.getElementById('buyScrews');
+        let lInput = document.getElementById('buyLumber');
+        let tot = document.getElementById('storeTotal');
+        let updateTot = () => {
+            let n = parseInt(nInput.value) || 0;
+            let s = parseInt(sInput.value) || 0;
+            let l = parseInt(lInput.value) || 0;
+            tot.innerText = (n * 1) + (s * 1) + (l * 10);
+        };
+        if (nInput) nInput.addEventListener('input', updateTot);
+        if (sInput) sInput.addEventListener('input', updateTot);
+        if (lInput) lInput.addEventListener('input', updateTot);
+    }, 50);
 }
 
     } else if (zoneName === 'Home Depot') {
