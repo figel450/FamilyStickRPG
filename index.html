@@ -11,7 +11,13 @@
     <!-- START SCREEN -->
     <div id="startScreen" class="overlay">
         <h1>Family Stick RPG</h1>
-        <h2>Select Your Character</h2>
+        <h2>1. Select Controls</h2>
+        <div class="control-select">
+            <button id="btnCtrlMouse" class="char-btn selected-ctrl">Mouse & Keyboard</button>
+            <button id="btnCtrlTouch" class="char-btn">Touch Screen (Mobile)</button>
+        </div>
+        
+        <h2>2. Select Your Character</h2>
         <div class="character-select">
             <button id="btnAsher" class="char-btn">
                 <h3>Asher</h3>
@@ -22,7 +28,48 @@
                 <p>Red Backward Cap<br>Special: Bento Bonus</p>
             </button>
         </div>
+        
+        <div class="leaderboard-section">
+            <h3>Global Leaderboard</h3>
+            <table id="leaderboardTable">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Initials</th>
+                        <th>Character</th>
+                        <th>Days Left</th>
+                        <th>Dollars</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    <tr><td colspan="5">Loading scores...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
+
+    <!-- WIN SCREEN -->
+    <div id="winScreen" class="overlay hidden">
+        <h1>YOU WIN!</h1>
+        <p>You finished the Shed-Style Treehouse!</p>
+        <div class="win-stats" id="winStatsText"></div>
+        <h2>Enter Initials for Leaderboard</h2>
+        <input type="text" id="winInitials" maxlength="3" placeholder="ABC" style="font-size: 24px; text-transform: uppercase; width: 100px; text-align: center; margin-bottom: 20px;">
+        <br>
+        <button id="btnSubmitScore" class="dialog-btn">Submit Score & Play Again</button>
+    </div>
+    
+    <!-- MOBILE GAMEPAD -->
+    <div id="mobileGamepad" class="hidden">
+        <div class="dpad">
+            <button id="dpadUp" class="dpad-btn up">▲</button>
+            <button id="dpadLeft" class="dpad-btn left">◀</button>
+            <button id="dpadRight" class="dpad-btn right">▶</button>
+            <button id="dpadDown" class="dpad-btn down">▼</button>
+        </div>
+        <div class="action-pad">
+            <button id="btnInteract" class="action-btn">E</button>
+        </div>
 
     <!-- GAME UI -->
     <div id="gameUI" class="hidden">

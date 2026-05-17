@@ -138,6 +138,14 @@ function showInstructions() {
 }
 
 function startGame(char) {
+    playSound("tap");
+    
+    // Check if touch controls selected
+    let isTouch = document.getElementById('btnCtrlTouch').classList.contains('selected-ctrl');
+    if (isTouch) {
+        document.getElementById('mobileGamepad').classList.remove('hidden');
+    }
+
     state.character = char;
     startScreen.classList.add('hidden');
     gameUI.classList.remove('hidden');
@@ -145,10 +153,12 @@ function startGame(char) {
     isPlaying = true;
     updateUI();
     
+    playSound("good"); // Play a happy start sound
+    
     // Story Context Intro
     showDialog("Welcome to Family Stick RPG!", 
         "Your main objective is to finish the Shed-Style Treehouse in your backyard in 30 days! \n\nHelp Dad at GP Center to earn Dollars, buy materials at Home Depot, and level up your stats at school and the sports complex!\n\nKeep your Fun level high to boost all your stat gains!", 
-        [{label: "[1] Let's Go!", action: () => {}}]
+        [{label: "[1] Let's Go!", action: () => { playSound("tap"); }}]
     );
 
     requestAnimationFrame(gameLoop);
@@ -247,6 +257,7 @@ function showDialog(title, text, buttons) {
         b.className = 'dialog-btn';
         b.innerText = btn.label;
         b.onclick = () => {
+            playSound("tap");
             btn.action();
             if(!btn.keepOpen) {
                 dialogOverlay.classList.add('hidden');
@@ -383,12 +394,18 @@ function applyStatChange(actionName, timeCost, energyCost, statsMap, onComplete 
     updateUI();
     
     // Show explicit result popup
+    if (actionName.includes("Failed") || actionName.includes("Crash")) {
+        playSound("bad");
+    } else {
+        playSound("good");
+    }
     showDialog(`${actionName} Complete!`, resultText, [{label: "[1] Awesome!", action: ()=>{
         if (onComplete) onComplete();
     }}]);
     
     if(state.energy <= 0) {
         setTimeout(() => {
+            playSound("bad");
             showDialog("Passed Out!", "You completely ran out of energy and blacked out! You wake up in your bed 8 hours later.", [
                 { label: '[1] Wake Up', action: () => { 
                     state.energy = state.maxEnergy;
@@ -577,7 +594,17 @@ function triggerZone(zoneName) {
             { label: `[1] Build (Need ${reqNails}N, ${reqScrews}S, ${reqLumber}L)`, action: () => {
                 if (state.treehouseBuildCount >= 10) {
                     if (state.hasTreehouseCouch && state.hasTreehouseLEDs && state.hasTreehouseTV) {
-                        showDialog("YOU WIN!", "You completely finished the Shed-Style Treehouse with all the furniture! Your family is amazed!", [{label:"[1] Play Again", action:()=>location.reload()}]);
+                        playSound("good");
+                        isPlaying = false;
+                        document.getElementById('gameUI').classList.add('hidden');
+                        document.getElementById('mobileGamepad').classList.add('hidden');
+                        document.getElementById('winScreen').classList.remove('hidden');
+                        document.getElementById('winStatsText').innerHTML = `
+                            <p>Character: ${state.character}</p>
+                            <p>Days Remaining: ${state.daysRemaining}</p>
+                            <p>Dollars: $${state.dollars}</p>
+                            <p>Intel: ${state.intel} | Strength: ${state.strength}</p>
+                        `;
                     } else {
                         showDialog("Structure Done!", "The physical treehouse is done. Now you need to install the Couch, TV, and LEDs!", [{label:"[1] Okay", action:()=>{}}]);
                     }
@@ -1073,6 +1100,7 @@ function drawDogCountdown(currentTime) {
         dogState.countdown--;
         dogState.lastTick = currentTime;
         if (dogState.countdown < 0) {
+            playSound("dog");
             gameState = 'MINIGAME_DOG';
             dogMessage.innerText = `${dogState.type} is chasing you! Jump the fences!`;
         }
@@ -1214,3 +1242,171 @@ function gameLoop(currentTime) {
     
     requestAnimationFrame(gameLoop);
 }
+
+// ----------------------------------------------------
+// Audio System
+// ----------------------------------------------------
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+
+function playSound(type) {
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    if (type === "tap") {
+        osc.type = "square";
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === "good") {
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(554.37, audioCtx.currentTime + 0.1); // C#
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.2); // E
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+    } else if (type === "bad") {
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+    } else if (type === "dog") {
+        osc.type = "square";
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.connect(gain2); gain2.connect(audioCtx.destination);
+        osc2.type = "square";
+        osc2.frequency.setValueAtTime(350, audioCtx.currentTime + 0.15);
+        osc2.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.25);
+        gain2.gain.setValueAtTime(0.1, audioCtx.currentTime + 0.15);
+        gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+        osc2.start(audioCtx.currentTime + 0.15);
+        osc2.stop(audioCtx.currentTime + 0.25);
+    }
+}
+
+// ----------------------------------------------------
+// Dreamlo Leaderboard
+// ----------------------------------------------------
+const DREAMLO_PUBLIC = "6a09631a8f40bb17b0940235";
+const DREAMLO_PRIVATE = "LEbUOJMKUUuZRL3D8uDwNwobtPHQ1sZ06baDr6BCQdxg";
+
+async function fetchLeaderboard() {
+    try {
+        let res = await fetch(`http://dreamlo.com/lb/${DREAMLO_PUBLIC}/json`);
+        let data = await res.json();
+        let tbody = document.getElementById("leaderboardBody");
+        tbody.innerHTML = "";
+        
+        if (!data.dreamlo || !data.dreamlo.leaderboard || !data.dreamlo.leaderboard.entry) {
+            tbody.innerHTML = `<tr><td colspan="5">No scores yet!</td></tr>`;
+            return;
+        }
+        let entries = data.dreamlo.leaderboard.entry;
+        if (!Array.isArray(entries)) entries = [entries];
+        
+        // Sort by score (days remaining) descending
+        entries.sort((a,b) => parseInt(b.score) - parseInt(a.score));
+        
+        entries.slice(0, 10).forEach((entry, idx) => {
+            let tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${idx + 1}</td>
+                <td>${entry.name}</td>
+                <td>${entry.text}</td>
+                <td>${entry.score}</td>
+                <td>$${Math.floor(entry.seconds / 100)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch(e) {
+        document.getElementById("leaderboardBody").innerHTML = `<tr><td colspan="5">Failed to load</td></tr>`;
+    }
+}
+
+async function submitScore() {
+    let init = document.getElementById("winInitials").value.toUpperCase();
+    if (!init || init.length === 0) init = "UNK";
+    
+    // We use score = daysRemaining
+    let score = state.daysRemaining;
+    // We can store character in "text"
+    let text = state.character;
+    // We can store dollars in "seconds" (must be int)
+    let seconds = state.dollars * 100; 
+    
+    document.getElementById("btnSubmitScore").innerText = "Saving...";
+    document.getElementById("btnSubmitScore").disabled = true;
+    
+    try {
+        await fetch(`http://dreamlo.com/lb/${DREAMLO_PRIVATE}/add/${init}/${score}/${seconds}/${text}`);
+    } catch(e) {}
+    
+    location.reload();
+}
+// Init leaderboard on load
+fetchLeaderboard();
+
+
+document.getElementById("btnCtrlMouse").onclick = () => {
+    playSound("tap");
+    document.getElementById("btnCtrlMouse").classList.add("selected-ctrl");
+    document.getElementById("btnCtrlTouch").classList.remove("selected-ctrl");
+};
+document.getElementById("btnCtrlTouch").onclick = () => {
+    playSound("tap");
+    document.getElementById("btnCtrlTouch").classList.add("selected-ctrl");
+    document.getElementById("btnCtrlMouse").classList.remove("selected-ctrl");
+};
+document.getElementById("btnAsher").onclick = () => { startGame("Asher"); };
+document.getElementById("btnElliot").onclick = () => { startGame("Elliot"); };
+
+document.getElementById("btnSubmitScore").onclick = () => {
+    playSound("tap");
+    submitScore();
+};
+
+const dpadUp = document.getElementById("dpadUp");
+const dpadDown = document.getElementById("dpadDown");
+const dpadLeft = document.getElementById("dpadLeft");
+const dpadRight = document.getElementById("dpadRight");
+const btnInteract = document.getElementById("btnInteract");
+
+function bindTouch(el, key) {
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); keys[key] = true; });
+    el.addEventListener("touchend", (e) => { e.preventDefault(); keys[key] = false; });
+    el.addEventListener("mousedown", (e) => { e.preventDefault(); keys[key] = true; });
+    el.addEventListener("mouseup", (e) => { e.preventDefault(); keys[key] = false; });
+    el.addEventListener("mouseleave", (e) => { e.preventDefault(); keys[key] = false; });
+}
+bindTouch(dpadUp, "w");
+bindTouch(dpadDown, "s");
+bindTouch(dpadLeft, "a");
+bindTouch(dpadRight, "d");
+
+btnInteract.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    if(gameState === "OVERWORLD") handleInteraction();
+});
+btnInteract.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    if(gameState === "OVERWORLD") handleInteraction();
+});
+
