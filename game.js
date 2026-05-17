@@ -300,8 +300,24 @@ function sleepAction() {
     }
 }
 
+function advanceTime(mins) {
+    let oldDay = Math.floor(state.clockMinutes / (24*60));
+    state.clockMinutes += mins;
+    let newDay = Math.floor(state.clockMinutes / (24*60));
+    if (newDay > oldDay) {
+        state.daysRemaining -= (newDay - oldDay);
+    }
+}
+
 function applyStatChange(actionName, timeCost, energyCost, statsMap) {
-    state.clockMinutes += timeCost;
+    let currentMinsOfDay = state.clockMinutes % (24 * 60);
+    // Late night penalty: Double cost between 9:30 PM (1290 mins) and 7:00 AM (420 mins)
+    if (currentMinsOfDay >= 1290 || currentMinsOfDay < 420) {
+        timeCost *= 2;
+        energyCost *= 2;
+    }
+
+    advanceTime(timeCost);
     state.energy -= energyCost;
     
     // Fun Mechanic
@@ -343,10 +359,24 @@ function applyStatChange(actionName, timeCost, energyCost, statsMap) {
     // Show explicit result popup
     showDialog(`${actionName} Complete!`, resultText, [{label: "[1] Awesome!", action: ()=>{}}]);
     
-    if(state.energy === 0) {
+    if(state.energy <= 0) {
         setTimeout(() => {
-            showDialog("Passed Out!", "You ran out of energy. Mom found you and carried you to bed.", [
-                { label: '[1] Wake Up', action: () => { sleepAction(); } }
+            showDialog("Passed Out!", "You completely ran out of energy and blacked out! You wake up in your bed 8 hours later.", [
+                { label: '[1] Wake Up', action: () => { 
+                    state.energy = state.maxEnergy;
+                    advanceTime(8 * 60);
+                    state.fun = 0;
+                    
+                    let bedroom = zones.find(z => z.name === 'Bedroom');
+                    if (bedroom) {
+                        state.x = bedroom.x + 50;
+                        state.y = bedroom.y + 25;
+                    }
+                    
+                    dialogOverlay.classList.add('hidden');
+                    gameState = 'OVERWORLD';
+                    updateUI();
+                } }
             ]);
         }, 500);
     }
@@ -380,7 +410,23 @@ function handleInteraction() {
                             showDialog("Success!", "You bought the Couch and installed it!", [{label:"[1] Nice", action:()=>{}}]);
                         }
                     }, keepOpen: true },
-                    { label: '[2] Not right now', action: () => {} }
+                    { label: '[2] Rest (Restore Energy, Takes Time)', action: () => {
+                        let missingEnergy = state.maxEnergy - state.energy;
+                        if (missingEnergy <= 0) {
+                            showDialog("Full Energy", "You already have full energy!", [{label:"[1] Okay", action:()=>{}}]);
+                        } else {
+                            let timeCost = 120;
+                            let currentMinsOfDay = state.clockMinutes % (24 * 60);
+                            if (currentMinsOfDay >= 1290 || currentMinsOfDay < 420) {
+                                timeCost *= 2;
+                            }
+                            advanceTime(timeCost);
+                            state.energy = state.maxEnergy;
+                            updateUI();
+                            showDialog("Rested!", `Mom made you a snack. You restored all your energy, but it took ${formatDuration(timeCost)}.`, [{label:"[1] Thanks Mom!", action:()=>{}}]);
+                        }
+                    }, keepOpen: true },
+                    { label: '[3] Not right now', action: () => {} }
                 ]);
                 return;
             } else if (npc.name === 'Dad') {
@@ -516,12 +562,21 @@ function triggerZone(zoneName) {
         let btns = [
             { label: '[1] Study (+Intel)', action: () => applyStatChange("Studying", 180, 40, { intel: 15, fun: -5 }), keepOpen: true }
         ];
+        
+        btns.push({ label: '[2] Take Target Entrance Exam (Needs 200 INT)', action: () => {
+            if (state.intel >= 200) {
+                startEntryMath();
+            } else {
+                showDialog("Not Smart Enough", "You need at least 200 Intelligence to take the Target Entrance Exam.", [{label:"[1] Okay", action:()=>{}}]);
+            }
+        }, keepOpen: true });
+        
         if (state.inTargetProgram) {
-            btns.push({ label: '[2] Target Math Question (Double Intel)', action: () => startTargetMath(), keepOpen: true });
+            btns.push({ label: '[3] Target Math Question (Double Intel)', action: () => startTargetMath(), keepOpen: true });
+            btns.push({ label: '[4] Leave', action: () => {} });
         } else {
-            btns.push({ label: '[2] Take Target Entry Test', action: () => startEntryMath(), keepOpen: true });
+            btns.push({ label: '[3] Leave', action: () => {} });
         }
-        btns.push({ label: '[3] Leave', action: () => {} });
         
         showDialog("Sope Creek Elementary", "Time to learn!", btns);
     } else if (zoneName === 'Grace Marietta') {
