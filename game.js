@@ -1414,9 +1414,19 @@ bindTouch(dpadRight, "d");
 btnInteract.addEventListener("touchstart", (e) => {
     e.preventDefault();
     if(gameState === "OVERWORLD") handleInteraction();
+    else keys[' '] = true;
+});
+btnInteract.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    keys[' '] = false;
 });
 btnInteract.addEventListener("mousedown", (e) => {
     e.preventDefault();
     if(gameState === "OVERWORLD") handleInteraction();
+    else keys[' '] = true;
+});
+btnInteract.addEventListener("mouseup", (e) => {
+    e.preventDefault();
+    keys[' '] = false;
 });
 
