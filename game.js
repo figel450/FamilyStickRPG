@@ -256,7 +256,11 @@ function showDialog(title, text, buttons) {
         const b = document.createElement('button');
         b.className = 'dialog-btn';
         b.innerText = btn.label;
-        b.onclick = () => {
+        let fired = false;
+        const trigger = (e) => {
+            if (e && e.type === "touchstart") e.preventDefault();
+            if (fired) return;
+            fired = true;
             playSound("tap");
             btn.action();
             if(!btn.keepOpen) {
@@ -266,6 +270,8 @@ function showDialog(title, text, buttons) {
                 state.y += 10;
             }
         };
+        b.onclick = trigger;
+        b.ontouchstart = trigger;
         dialogButtons.appendChild(b);
     });
     
