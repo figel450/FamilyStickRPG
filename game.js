@@ -157,12 +157,19 @@ function startGame(char) {
 // Input (Handles global keydowns including numbers for dialogs and start screen)
 window.addEventListener('keydown', e => { 
     if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; 
-    if(e.key === 'e' || e.key === 'E') handleInteraction();
     
     // Start Screen Character Select
     if (!isPlaying) {
         if (e.key === '1') startGame('Asher');
         if (e.key === '2') startGame('Elliot');
+        return;
+    }
+    
+    if (gameState === 'OVERWORLD') {
+        if (e.key === 'e' || e.key === 'E') {
+            handleInteraction();
+        }
+        return; // Prevent this keydown from instantly triggering dialog options
     }
     
     // Dialog Selection
