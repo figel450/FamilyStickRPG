@@ -680,44 +680,6 @@ function triggerZone(zoneName) {
             }, keepOpen: true},
             { label: '[3] Leave', action: () => {} }
         ]);
-let homeDepotCart = { n: 0, s: 0, l: 0 };
-function openHomeDepotStore() {
-    let cost = homeDepotCart.n * 1 + homeDepotCart.s * 1 + homeDepotCart.l * 10;
-    
-    let msg = `You have:
-Nails: ${state.nails} | Screws: ${state.screws} | Lumber: ${state.lumber}
-
-Shopping Cart:
-Nails ($1): ${homeDepotCart.n}
-Screws ($1): ${homeDepotCart.s}
-Lumber ($10): ${homeDepotCart.l}
-
-Total Cost: $${cost} (You have $${state.dollars})`;
-    
-    showDialog("Home Depot Store", msg, [
-        { label: '[1] +10 Nails', action: () => { homeDepotCart.n += 10; openHomeDepotStore(); }, keepOpen: true },
-        { label: '[2] +10 Screws', action: () => { homeDepotCart.s += 10; openHomeDepotStore(); }, keepOpen: true },
-        { label: '[3] +1 Lumber', action: () => { homeDepotCart.l += 1; openHomeDepotStore(); }, keepOpen: true },
-        { label: '[4] Clear Cart', action: () => { homeDepotCart = {n:0, s:0, l:0}; openHomeDepotStore(); }, keepOpen: true },
-        { label: '[5] Purchase', action: () => { 
-            if (cost === 0) {
-                showDialog("Store", "You didn't buy anything.", [{label:"[1] Okay", action:()=>{}}]);
-            } else if (state.dollars >= cost) {
-                state.dollars -= cost;
-                state.nails += homeDepotCart.n;
-                state.screws += homeDepotCart.s;
-                state.lumber += homeDepotCart.l;
-                updateUI();
-                showDialog("Success", `Bought ${homeDepotCart.n} Nails, ${homeDepotCart.s} Screws, and ${homeDepotCart.l} Lumber for $${cost}!`, [{label:"[1] Nice", action:()=>{}}]);
-                homeDepotCart = {n:0, s:0, l:0};
-            } else {
-                showDialog("Too Expensive", `That costs $${cost}, but you only have $${state.dollars}.`, [{label:"[1] Okay", action:()=>openHomeDepotStore()}]);
-            }
-        }, keepOpen: true },
-        { label: '[6] Leave', action: () => { homeDepotCart = {n:0, s:0, l:0}; } }
-    ]);
-}
-
     } else if (zoneName === 'Home Depot') {
         showDialog("Home Depot", "Going shopping at Home Depot takes 2 hours.", [
             { label: '[1] Go Shopping (2 hours)', action: () => {
@@ -756,6 +718,44 @@ Total Cost: $${cost} (You have $${state.dollars})`;
             { label: '[2] Leave', action: () => {} }
         ]);
     }
+}
+
+let homeDepotCart = { n: 0, s: 0, l: 0 };
+function openHomeDepotStore() {
+    let cost = homeDepotCart.n * 1 + homeDepotCart.s * 1 + homeDepotCart.l * 10;
+    
+    let msg = `You have:
+Nails: ${state.nails} | Screws: ${state.screws} | Lumber: ${state.lumber}
+
+Shopping Cart:
+Nails ($1): ${homeDepotCart.n}
+Screws ($1): ${homeDepotCart.s}
+Lumber ($10): ${homeDepotCart.l}
+
+Total Cost: $${cost} (You have $${state.dollars})`;
+    
+    showDialog("Home Depot Store", msg, [
+        { label: '[1] +10 Nails', action: () => { homeDepotCart.n += 10; openHomeDepotStore(); }, keepOpen: true },
+        { label: '[2] +10 Screws', action: () => { homeDepotCart.s += 10; openHomeDepotStore(); }, keepOpen: true },
+        { label: '[3] +1 Lumber', action: () => { homeDepotCart.l += 1; openHomeDepotStore(); }, keepOpen: true },
+        { label: '[4] Clear Cart', action: () => { homeDepotCart = {n:0, s:0, l:0}; openHomeDepotStore(); }, keepOpen: true },
+        { label: '[5] Purchase', action: () => { 
+            if (cost === 0) {
+                showDialog("Store", "You didn't buy anything.", [{label:"[1] Okay", action:()=>{}}]);
+            } else if (state.dollars >= cost) {
+                state.dollars -= cost;
+                state.nails += homeDepotCart.n;
+                state.screws += homeDepotCart.s;
+                state.lumber += homeDepotCart.l;
+                updateUI();
+                showDialog("Success", `Bought ${homeDepotCart.n} Nails, ${homeDepotCart.s} Screws, and ${homeDepotCart.l} Lumber for $${cost}!`, [{label:"[1] Nice", action:()=>{}}]);
+                homeDepotCart = {n:0, s:0, l:0};
+            } else {
+                showDialog("Too Expensive", `That costs $${cost}, but you only have $${state.dollars}.`, [{label:"[1] Okay", action:()=>openHomeDepotStore()}]);
+            }
+        }, keepOpen: true },
+        { label: '[6] Leave', action: () => { homeDepotCart = {n:0, s:0, l:0}; } }
+    ]);
 }
 
 // ----------------------------------------------------
