@@ -251,6 +251,7 @@ function showDialog(title, text, buttons) {
         dialogButtons.appendChild(b);
     });
     
+    dialogOverlay.style.display = ''; // Reset display style in case it was forced hidden
     dialogOverlay.classList.remove('hidden');
 }
 
@@ -428,7 +429,12 @@ function handleInteraction() {
                     }, keepOpen: true });
                 }
                 
-                btns.push({ label: `[${btns.length + 1}] Rest (Restore Energy, Takes Time)`, action: () => {
+                btns.push({ label: `[${btns.length + 1}] Cuddles (1 hour, +50 Energy)`, action: () => {
+                    applyStatChange("Cuddles", 60, -50, {fun: 10});
+                    showDialog("Cuddles", "Mom gave you a big hug! Energy restored.", [{label:"[1] Thanks Mom!", action:()=>{}}]);
+                }, keepOpen: true });
+                
+                btns.push({ label: `[${btns.length + 1}] Rest (Restore Max Energy, Takes Time)`, action: () => {
                     let missingEnergy = state.maxEnergy - state.energy;
                     if (missingEnergy <= 0) {
                         showDialog("Full Energy", "You already have full energy!", [{label:"[1] Okay", action:()=>{}}]);
@@ -696,6 +702,7 @@ Lumber: ${state.lumber}
     <div style="margin-top:10px; font-weight:bold; color:#facc15;">
         Total Cost: $<span id="storeTotal">0</span> (You have $${state.dollars})
     </div>
+    <div style="margin-top:5px; font-size:12px; color:#aaa;">(Press Enter to Purchase)</div>
 </div>
 `;
     
@@ -734,9 +741,12 @@ Lumber: ${state.lumber}
             let l = parseInt(lInput.value) || 0;
             tot.innerText = (n * 1) + (s * 1) + (l * 10);
         };
-        if (nInput) nInput.addEventListener('input', updateTot);
-        if (sInput) sInput.addEventListener('input', updateTot);
-        if (lInput) lInput.addEventListener('input', updateTot);
+        let enterCb = (e) => {
+            if (e.key === 'Enter') document.querySelectorAll('.dialog-btn')[0].click();
+        };
+        if (nInput) { nInput.addEventListener('input', updateTot); nInput.addEventListener('keydown', enterCb); }
+        if (sInput) { sInput.addEventListener('input', updateTot); sInput.addEventListener('keydown', enterCb); }
+        if (lInput) { lInput.addEventListener('input', updateTot); lInput.addEventListener('keydown', enterCb); }
     }, 50);
 }
 
@@ -1040,6 +1050,11 @@ function triggerDogAttack() {
 function startDogCountdown(type) {
     gameState = 'MINIGAME_DOG_COUNTDOWN';
     dialogOverlay.classList.add('hidden'); // Manually close since keepOpen is true
+    dialogOverlay.style.display = 'none'; // Force hide
+    dialogTitle.innerText = '';
+    dialogText.innerHTML = '';
+    dialogButtons.innerHTML = '';
+    
     dogUI.classList.remove('hidden');
     
     dogState.type = type;
@@ -1053,7 +1068,7 @@ function startDogCountdown(type) {
 }
 
 function drawDogCountdown(currentTime) {
-    ctx.fillStyle = '#334155'; // Lighter slate color instead of #111
+    ctx.fillStyle = '#87CEEB'; // Sky blue
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Floor
@@ -1087,7 +1102,7 @@ function drawDogCountdown(currentTime) {
 }
 
 function drawDogGame() {
-    ctx.fillStyle = '#334155'; // Lighter slate color instead of #111
+    ctx.fillStyle = '#87CEEB'; // Sky blue
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     ctx.fillStyle = '#fff';
