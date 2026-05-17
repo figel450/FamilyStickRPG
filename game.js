@@ -12,16 +12,18 @@ const dialogText = document.getElementById('dialogText');
 const dialogButtons = document.getElementById('dialogButtons');
 
 // Stats UI
+const uiDays = document.getElementById('daysDisplay');
 const uiTime = document.getElementById('clockDisplay');
 const uiEnergy = document.getElementById('energyDisplay');
+const uiFun = document.getElementById('funDisplay');
 const uiIntel = document.getElementById('intelDisplay');
 const uiStr = document.getElementById('strDisplay');
-const uiCraft = document.getElementById('craftDisplay');
-const uiBits = document.getElementById('bitsDisplay');
+const uiDollars = document.getElementById('dollarsDisplay');
 const uiCompanion = document.getElementById('companionDisplay');
-const uiTreehouse = document.getElementById('treehouseDisplay');
+const uiNails = document.getElementById('nailsDisplay');
+const uiScrews = document.getElementById('screwsDisplay');
+const uiLumber = document.getElementById('lumberDisplay');
 const uiItems = document.getElementById('itemDisplay');
-
 // Minigames
 const basketballUI = document.getElementById('basketballUI');
 const meterCursor = document.getElementById('meterCursor');
@@ -39,25 +41,33 @@ let lastTime = performance.now();
 
 const state = {
     character: 'Asher', // 'Asher' or 'Elliot'
+    daysRemaining: 30,
     clockMinutes: 8 * 60, // 8:00 AM
     energy: 100,
     maxEnergy: 100,
     intel: 0,
     strength: 0,
-    crafting: 0,
-    bits: 50,
-    fun: 100,
+    dollars: 50,
+    fun: 0,
     
     // Inventory & Progress
-    treehousePercent: 0,
+    nails: 0,
+    screws: 0,
+    lumber: 0,
+    treehouseBuildCount: 0, // Needs to reach 10
+    hasTreehouseCouch: false,
+    hasTreehouseTV: false,
+    hasTreehouseLEDs: false,
+    
     hasAirlessBall: false,
     has3DShoes: false,
-    hasBentoBonus: false,
-    dumplingTimer: 0,
+    hasDogToy: false,
+    
+    // School / Target Program
+    inTargetProgram: false,
     
     // Companion
     companion: null, // 'Rohan', 'Taj', or null
-    companionTimer: 0,
     
     // Position
     x: 600,
@@ -66,7 +76,7 @@ const state = {
     size: 20
 };
 
-const keys = { w: false, a: false, s: false, d: false, ' ': false };
+const keys = { w: false, a: false, s: false, d: false, ' ': false, '1': false, '2': false, '3': false, '4': false, '5': false };
 
 // ----------------------------------------------------
 // Zones & Map Data
@@ -76,8 +86,9 @@ canvas.height = 800;
 
 // Top-left: House, Bottom-left: Downtown, Top-right: School/Church, Bottom-right: Sports/Wilderness
 const zones = [
-    { name: 'Office', x: 50, y: 50, w: 150, h: 100, color: '#1e3a8a', label: 'Home: Office' },
-    { name: 'Garage', x: 50, y: 160, w: 150, h: 100, color: '#475569', label: 'Home: Garage' },
+    { name: 'Office', x: 50, y: 50, w: 150, h: 60, color: '#1e3a8a', label: 'Office' },
+    { name: 'Bedroom', x: 50, y: 120, w: 150, h: 50, color: '#6366f1', label: 'Bedroom (Sleep)' },
+    { name: 'Garage', x: 50, y: 180, w: 150, h: 80, color: '#475569', label: 'Garage (3D)' },
     { name: 'Treehouse', x: 220, y: 50, w: 150, h: 210, color: '#854d0e', label: 'Backyard Treehouse' },
     
     { name: 'Sope Creek', x: 800, y: 50, w: 300, h: 150, color: '#dc2626', label: 'Sope Creek Elementary' },
@@ -109,18 +120,19 @@ document.getElementById('btnInstructions').addEventListener('click', showInstruc
 
 function showInstructions() {
     showDialog("Map Instructions", 
-        "🏠 Office: Code/Solder (+Intel/Crafting)\n" +
-        "🏠 Garage: 3D Print items using Bits\n" +
-        "🏠 Treehouse: Spend Bits to build it!\n" +
-        "🏫 Sope Creek: Study (+Intel)\n" +
-        "⛪ Grace Marietta: Hang out (Heals Energy)\n" +
-        "🏙️ GP Center: Work with Dad (+Bits)\n" +
+        "🏠 Office: Play Minecraft/Solder (+Fun, +Intel)\n" +
+        "🏠 Bedroom: Sleep to restore energy and save the day.\n" +
+        "🏠 Garage: 3D Print items using Dollars\n" +
+        "🏠 Treehouse: Build it and install furniture!\n" +
+        "🏫 Sope Creek: Study (+Intel) or Math Test!\n" +
+        "⛪ Grace Marietta: Hang out (Heals, +Fun)\n" +
+        "🏙️ GP Center: Work with Dad (+Dollars)\n" +
         "🍣 Fugu Express: Buy food (+Energy)\n" +
-        "🛠️ Home Depot: Work a shift (+Bits)\n" +
+        "🛠️ Home Depot: Buy building materials (-Dollars)\n" +
         "🏀 Sports Complex: Play Hoops (+Strength)\n" +
-        "🌲 Wilderness: Hike (+Strength, +Bits)\n" +
-        "🏠 Taj's House: Recruit a companion for a stat boost!",
-        [{label: "Got it!", action: () => {}}]
+        "🌲 Wilderness: Hike (+Strength, +Fun)\n" +
+        "🏠 Taj's House: Recruit a companion for +Fun!",
+        [{label: "[1] Got it!", action: () => {}}]
     );
 }
 
@@ -134,17 +146,34 @@ function startGame(char) {
     
     // Story Context Intro
     showDialog("Welcome to Family Stick RPG!", 
-        "Your main objective is to finish the Shed-Style Treehouse in your backyard. \n\nHelp Dad at GP Center to earn Bits, buy materials at Home Depot, and level up your stats at school and the sports complex!\n\nWatch out for neighborhood dogs!", 
-        [{label: "Let's Go!", action: () => {}}]
+        "Your main objective is to finish the Shed-Style Treehouse in your backyard in 30 days! \n\nHelp Dad at GP Center to earn Dollars, buy materials at Home Depot, and level up your stats at school and the sports complex!\n\nKeep your Fun level high to boost all your stat gains!", 
+        [{label: "[1] Let's Go!", action: () => {}}]
     );
 
     requestAnimationFrame(gameLoop);
 }
 
-// Input
+// Input (Handles global keydowns including numbers for dialogs and start screen)
 window.addEventListener('keydown', e => { 
     if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; 
     if(e.key === 'e' || e.key === 'E') handleInteraction();
+    
+    // Start Screen Character Select
+    if (!isPlaying) {
+        if (e.key === '1') startGame('Asher');
+        if (e.key === '2') startGame('Elliot');
+    }
+    
+    // Dialog Selection
+    if (gameState === 'DIALOG' || gameState.startsWith('MINIGAME_MATH')) {
+        let num = parseInt(e.key);
+        if (!isNaN(num) && num > 0) {
+            let btns = dialogButtons.querySelectorAll('button');
+            if (num <= btns.length) {
+                btns[num - 1].click();
+            }
+        }
+    }
 });
 window.addEventListener('keyup', e => { 
     if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; 
@@ -162,20 +191,31 @@ function formatTime(mins) {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`;
 }
 
+function formatDuration(mins) {
+    if (mins < 60) return `${mins} mins`;
+    let h = Math.floor(mins / 60);
+    let m = mins % 60;
+    return m > 0 ? `${h} hour${h > 1 ? 's' : ''} ${m} min${m > 1 ? 's' : ''}` : `${h} hour${h > 1 ? 's' : ''}`;
+}
+
 function updateUI() {
+    uiDays.innerText = state.daysRemaining;
     uiTime.innerText = formatTime(state.clockMinutes);
     uiEnergy.innerText = Math.floor(state.energy);
+    uiFun.innerText = state.fun;
     uiIntel.innerText = state.intel;
     uiStr.innerText = state.strength;
-    uiCraft.innerText = state.crafting;
-    uiBits.innerText = state.bits;
+    uiDollars.innerText = state.dollars;
     
     uiCompanion.innerText = state.companion || 'None';
-    uiTreehouse.innerText = `${state.treehousePercent}%`;
+    uiNails.innerText = state.nails;
+    uiScrews.innerText = state.screws;
+    uiLumber.innerText = state.lumber;
     
     let items = [];
     if(state.hasAirlessBall) items.push('Airless Ball');
     if(state.has3DShoes) items.push('3D Shoes');
+    if(state.hasDogToy) items.push('Dog Toy');
     uiItems.innerText = items.length > 0 ? items.join(', ') : 'None';
 }
 
@@ -188,7 +228,7 @@ function showDialog(title, text, buttons) {
     // Reset movement keys so we don't sprint off after closing
     keys.w = false; keys.a = false; keys.s = false; keys.d = false;
     
-    buttons.forEach(btn => {
+    buttons.forEach((btn, index) => {
         const b = document.createElement('button');
         b.className = 'dialog-btn';
         b.innerText = btn.label;
@@ -207,22 +247,71 @@ function showDialog(title, text, buttons) {
     dialogOverlay.classList.remove('hidden');
 }
 
+function sleepAction() {
+    // Determine energy based on time. 
+    // Go to bed before 10 PM (22:00 = 1320 mins) -> 100% energy.
+    // 10PM - 12AM -> 80%. 12AM - 2AM -> 60%. Later -> 40%.
+    let currentHourOfDay = Math.floor(state.clockMinutes / 60) % 24;
+    let energyRestored = 100;
+    if (currentHourOfDay >= 22 || currentHourOfDay < 2) {
+        energyRestored = 80; // 10 PM to 2 AM
+        if (currentHourOfDay >= 0 && currentHourOfDay < 2) energyRestored = 60; // 12 AM to 2 AM
+    } else if (currentHourOfDay >= 2 && currentHourOfDay < 7) {
+        energyRestored = 40; // 2 AM to 7 AM
+    }
+    
+    state.energy = Math.min(state.maxEnergy, state.energy + energyRestored);
+    
+    // Reset daily buffs/variables
+    state.fun = 0;
+    state.daysRemaining -= 1;
+    state.companion = null;
+    
+    // Jump to 7 AM next day
+    state.clockMinutes = Math.floor(state.clockMinutes / (24 * 60)) * 24 * 60 + (24 * 60) + (7 * 60); 
+    
+    updateUI();
+    
+    if (state.daysRemaining <= 0) {
+        showDialog("Game Over!", "You ran out of days to finish the treehouse!", [{label: "Restart", action: () => location.reload()}]);
+    } else {
+        showDialog("Good Morning!", `You woke up feeling refreshed. Gained ${energyRestored} Energy. Day ${31 - state.daysRemaining} begins! Fun has been reset to 0.`, [{label: "Let's Go!", action: ()=>{}}]);
+    }
+}
+
 function applyStatChange(actionName, timeCost, energyCost, statsMap) {
     state.clockMinutes += timeCost;
     state.energy -= energyCost;
     
-    let multiplier = (state.companion) ? 1.5 : 1;
-    if (state.dumplingTimer > 0) multiplier += 0.5;
+    // Fun Mechanic
+    if (statsMap.fun) {
+        state.fun += statsMap.fun;
+        delete statsMap.fun; // Don't process fun as a regular stat multiplier target
+    }
     
-    let resultText = `Time spent: ${timeCost} mins.\nEnergy used: ${energyCost}.\n`;
-    if (multiplier > 1) {
-        resultText += `(Bonus Multiplier Active: ${multiplier}x!)\n`;
+    // Cap Fun
+    if (state.fun > 100) state.fun = 100;
+    if (state.fun < -100) state.fun = -100;
+    
+    let multiplier = 1 + (state.fun / 100);
+    if (multiplier < 0) multiplier = 0;
+    
+    let resultText = `Time spent: ${formatDuration(timeCost)}.\nEnergy used: ${energyCost}.\n`;
+    if (state.fun !== 0) {
+        resultText += `(Fun Bonus: ${state.fun}% multiplier!)\n`;
     }
     
     for(let [stat, val] of Object.entries(statsMap)) {
         let finalVal = Math.floor(val * multiplier);
-        state[stat] += finalVal;
-        resultText += `+${finalVal} ${stat.charAt(0).toUpperCase() + stat.slice(1)}! \n`;
+        if (stat === 'dollars') finalVal = val; // Don't multiply dollars by fun
+        
+        if (stat !== 'dollars') {
+            state[stat] += finalVal;
+            resultText += `${finalVal >= 0 ? '+' : ''}${finalVal} ${stat.charAt(0).toUpperCase() + stat.slice(1)}! \n`;
+        } else {
+            state[stat] += finalVal;
+            resultText += `${finalVal >= 0 ? '+' : ''}$${finalVal} \n`;
+        }
     }
     
     if (state.energy < 0) state.energy = 0;
@@ -231,12 +320,12 @@ function applyStatChange(actionName, timeCost, energyCost, statsMap) {
     updateUI();
     
     // Show explicit result popup
-    showDialog(`${actionName} Complete!`, resultText, [{label: "Awesome!", action: ()=>{}}]);
+    showDialog(`${actionName} Complete!`, resultText, [{label: "[1] Awesome!", action: ()=>{}}]);
     
     if(state.energy === 0) {
         setTimeout(() => {
-            showDialog("Passed Out!", "You ran out of energy. Mom found you and carried you to bed. It's a new day.", [
-                { label: 'Wake Up', action: () => { state.energy = state.maxEnergy; state.clockMinutes += 480; updateUI(); } }
+            showDialog("Passed Out!", "You ran out of energy. Mom found you and carried you to bed.", [
+                { label: '[1] Wake Up', action: () => { sleepAction(); } }
             ]);
         }, 500);
     }
@@ -253,20 +342,47 @@ function handleInteraction() {
         let dist = Math.hypot(state.x - npc.x, state.y - npc.y);
         if (dist < 40) {
             if (npc.name === 'Mom') {
-                showDialog("Mom (Kim)", "Make sure you guys aren't staying up too late! Here, have a snack.", [
-                    { label: 'Thanks Mom! (Heal)', action: () => { 
-                        state.energy = state.maxEnergy; 
-                        updateUI(); 
-                        showDialog("Feeling Great", "Mom's snacks fully restored your Energy!", [{label:"OK", action:()=>{}}]);
-                    }, keepOpen: true } // keepOpen true so the second dialog handles the state change
+                showDialog("Mom (Kim)", "Make sure you aren't staying up too late! I found a Couch for the treehouse, but it's super heavy.", [
+                    { label: '[1] Buy Couch ($500)', action: () => { 
+                        if (state.treehouseBuildCount < 10) {
+                            showDialog("Not Ready", "You need to finish building the physical treehouse first before installing furniture!", [{label:"[1] Okay", action:()=>{}}]);
+                        } else if (state.dollars < 500) {
+                            showDialog("Too expensive", "You don't have $500.", [{label:"[1] Okay", action:()=>{}}]);
+                        } else if (state.strength < 500) {
+                            showDialog("Too weak", "You need 500 Strength to lift and install this massive couch!", [{label:"[1] Okay", action:()=>{}}]);
+                        } else if (state.hasTreehouseCouch) {
+                            showDialog("Already Installed", "The couch is already in the treehouse!", [{label:"[1] Okay", action:()=>{}}]);
+                        } else {
+                            state.dollars -= 500;
+                            state.hasTreehouseCouch = true;
+                            updateUI();
+                            showDialog("Success!", "You bought the Couch and installed it!", [{label:"[1] Nice", action:()=>{}}]);
+                        }
+                    }, keepOpen: true },
+                    { label: '[2] Not right now', action: () => {} }
                 ]);
                 return;
             } else if (npc.name === 'Dad') {
-                showDialog("Dad (Kyle)", "I need some help testing this Fusion 360 algorithm. Can you run some scripts?", [
-                    { label: 'Help Dad (-20 Energy, +50 Bits)', action: () => {
-                        applyStatChange("Testing Code", 60, 20, { bits: 50 });
+                showDialog("Dad (Kyle)", "Hey buddy. Want to help me with some Fusion 360 scripts? Or do you want to buy some LED lights?", [
+                    { label: '[1] Help Dad (2h, -$ Energy)', action: () => {
+                        let payout = 20 + Math.floor(state.intel * 1.5);
+                        applyStatChange("Helping Dad", 120, 30, { dollars: payout, fun: -20 });
                     }, keepOpen: true },
-                    { label: 'Not right now', action: () => {} }
+                    { label: '[2] Buy LED Lights ($20)', action: () => {
+                        if (state.treehouseBuildCount < 10) {
+                            showDialog("Not Ready", "You need to finish building the physical treehouse first before installing lights!", [{label:"[1] Okay", action:()=>{}}]);
+                        } else if (state.hasTreehouseLEDs) {
+                            showDialog("Already Installed", "LED lights are already installed!", [{label:"[1] Okay", action:()=>{}}]);
+                        } else if (state.dollars >= 20) {
+                            state.dollars -= 20;
+                            state.hasTreehouseLEDs = true;
+                            // Takes 24 hours to install (skip to next day basically)
+                            applyStatChange("Installing LEDs", 1440, 50, { fun: 10 });
+                        } else {
+                            showDialog("Insufficient Funds", "You need $20.", [{label:"[1] Okay", action:()=>{}}]);
+                        }
+                    }, keepOpen: true },
+                    { label: '[3] Nevermind', action: () => {} }
                 ]);
                 return;
             }
@@ -286,139 +402,186 @@ function handleInteraction() {
 }
 
 function triggerZone(zoneName) {
-    if (zoneName === 'Office') {
-        const actionStr = state.character === 'Elliot' ? 'Solder Circuits (+Crafting)' : 'Play Minecraft (+Intel)';
-        const stat = state.character === 'Elliot' ? { crafting: 5 } : { intel: 5 };
+    if (zoneName === 'Bedroom') {
+        showDialog("Bedroom", "Ready to call it a day?", [
+            { label: '[1] Go to Sleep', action: () => sleepAction(), keepOpen: true },
+            { label: '[2] Not Yet', action: () => {} }
+        ]);
+    } else if (zoneName === 'Office') {
+        const actionStr = state.character === 'Elliot' ? '[1] Solder Circuits' : '[1] Play Minecraft';
         
-        showDialog("Home Office", "The L-shaped pine desk and midnight blue walls make this a great place to focus.", [
-            { label: actionStr, action: () => applyStatChange(state.character==='Elliot'?"Soldering":"Minecraft", 60, 15, stat), keepOpen: true },
-            { label: 'Leave', action: () => {} }
+        showDialog("Home Office", "The L-shaped pine desk and midnight blue walls.", [
+            { label: actionStr, action: () => applyStatChange(state.character==='Elliot'?"Soldering":"Minecraft", 60, 15, { intel: 5, fun: 20 }), keepOpen: true },
+            { label: '[2] Take Free TV', action: () => {
+                if (state.treehouseBuildCount < 10) {
+                    showDialog("Not Ready", "You need to finish building the physical treehouse first before installing the TV!", [{label:"[1] Okay", action:()=>{}}]);
+                } else if (state.hasTreehouseTV) {
+                    showDialog("Already Installed", "The TV is already in the treehouse!", [{label:"[1] Okay", action:()=>{}}]);
+                } else if (state.intel < 500) {
+                    showDialog("Too Technical", "You need 500 Intelligence to set up the complex internet connection for this TV.", [{label:"[1] Okay", action:()=>{}}]);
+                } else {
+                    state.hasTreehouseTV = true;
+                    applyStatChange("Installing TV", 180, 20, { fun: 50 });
+                }
+            }, keepOpen: true},
+            { label: '[3] Leave', action: () => {} }
         ]);
     } else if (zoneName === 'Garage') {
         showDialog("Tech Station", "The Bambu X1C 3D Printer is humming.", [
-            { label: 'Craft Airless Basketball (200 Bits)', action: () => {
-                if(state.bits >= 200) { 
-                    state.bits -= 200; state.hasAirlessBall = true; updateUI(); 
-                    showDialog("Crafting Success!", "You printed an Airless Basketball! The sports minigame will now be easier.", [{label:"Sweet!", action:()=>{}}]);
-                } else {
-                    showDialog("Insufficient Funds", "You don't have enough bits.", [{label:"Okay", action:()=>{}}]);
-                }
+            { label: '[1] Craft Airless Basketball ($200)', action: () => {
+                if(state.dollars >= 200) { 
+                    state.dollars -= 200; 
+                    let successChance = Math.min(95, 30 + state.intel);
+                    if (Math.random() * 100 < successChance) {
+                        state.hasAirlessBall = true; updateUI(); 
+                        showDialog("Success!", "You printed an Airless Basketball!", [{label:"[1] Sweet!", action:()=>{}}]);
+                    } else {
+                        applyStatChange("Failed Print", 0, 0, { fun: -25 });
+                    }
+                } else showDialog("Insufficient Funds", "You don't have enough dollars.", [{label:"[1] Okay", action:()=>{}}]);
             }, keepOpen: true},
-            { label: 'Craft 3D Shoes (300 Bits)', action: () => {
-                if(state.bits >= 300) { 
-                    state.bits -= 300; state.has3DShoes = true; updateUI(); 
-                    showDialog("Crafting Success!", "You printed 3D Shoes! You will run faster and jump higher when dogs chase you.", [{label:"Sweet!", action:()=>{}}]);
-                } else {
-                    showDialog("Insufficient Funds", "You don't have enough bits.", [{label:"Okay", action:()=>{}}]);
-                }
+            { label: '[2] Craft 3D Shoes ($300)', action: () => {
+                if(state.dollars >= 300) { 
+                    state.dollars -= 300; 
+                    let successChance = Math.min(95, 30 + state.intel);
+                    if (Math.random() * 100 < successChance) {
+                        state.has3DShoes = true; updateUI(); 
+                        showDialog("Success!", "You printed 3D Shoes!", [{label:"[1] Sweet!", action:()=>{}}]);
+                    } else {
+                        applyStatChange("Failed Print", 0, 0, { fun: -25 });
+                    }
+                } else showDialog("Insufficient Funds", "You don't have enough dollars.", [{label:"[1] Okay", action:()=>{}}]);
             }, keepOpen: true},
-            { label: 'Leave', action: () => {} }
+            { label: '[3] Craft Dog Toy ($150)', action: () => {
+                if(state.dollars >= 150) { 
+                    state.dollars -= 150; 
+                    let successChance = Math.min(95, 30 + state.intel);
+                    if (Math.random() * 100 < successChance) {
+                        state.hasDogToy = true; updateUI(); 
+                        showDialog("Success!", "You printed a Dog Toy! This will distract dogs.", [{label:"[1] Sweet!", action:()=>{}}]);
+                    } else {
+                        applyStatChange("Failed Print", 0, 0, { fun: -25 });
+                    }
+                } else showDialog("Insufficient Funds", "You don't have enough dollars.", [{label:"[1] Okay", action:()=>{}}]);
+            }, keepOpen: true},
+            { label: '[4] Leave', action: () => {} }
         ]);
     } else if (zoneName === 'Treehouse') {
+        let reqNails = (state.treehouseBuildCount + 1) * 2;
+        let reqScrews = (state.treehouseBuildCount + 1) * 2;
+        let reqLumber = (state.treehouseBuildCount + 1);
+        
         showDialog("The Backyard", "The Shed-Style Treehouse site.", [
-            { label: 'Build (Needs 50 Bits of Materials)', action: () => {
-                if(state.bits >= 50 && state.treehousePercent < 100) {
-                    state.bits -= 50;
-                    state.treehousePercent += 10;
-                    if(state.treehousePercent >= 100) {
-                        showDialog("CONGRATULATIONS!", "You finished building the massive Shed-Style Treehouse! Your family is proud of you.", [{label:"Woohoo!", action:()=>{}}]);
+            { label: `[1] Build (Need ${reqNails}N, ${reqScrews}S, ${reqLumber}L)`, action: () => {
+                if (state.treehouseBuildCount >= 10) {
+                    if (state.hasTreehouseCouch && state.hasTreehouseLEDs && state.hasTreehouseTV) {
+                        showDialog("YOU WIN!", "You completely finished the Shed-Style Treehouse with all the furniture! Your family is amazed!", [{label:"[1] Play Again", action:()=>location.reload()}]);
                     } else {
-                        applyStatChange("Building", 120, 30, { crafting: 10 });
+                        showDialog("Structure Done!", "The physical treehouse is done. Now you need to install the Couch, TV, and LEDs!", [{label:"[1] Okay", action:()=>{}}]);
                     }
-                } else if (state.treehousePercent >= 100) {
-                    showDialog("It's Done", "The treehouse is already finished. Good job!", [{label:"Okay", action:()=>{}}]);
                 } else {
-                    showDialog("Insufficient Funds", "You need 50 Bits to buy more materials from Home Depot.", [{label:"Okay", action:()=>{}}]);
+                    if (state.nails >= reqNails && state.screws >= reqScrews && state.lumber >= reqLumber) {
+                        state.nails -= reqNails; state.screws -= reqScrews; state.lumber -= reqLumber;
+                        state.treehouseBuildCount++;
+                        applyStatChange("Building", 120, 30, { strength: 10, fun: 10 });
+                    } else {
+                        showDialog("Not Enough Materials", `You need ${reqNails} Nails, ${reqScrews} Screws, and ${reqLumber} Lumber. Go to Home Depot!`, [{label:"[1] Okay", action:()=>{}}]);
+                    }
                 }
             }, keepOpen: true},
-            { label: 'Leave', action: () => {} }
+            { label: '[2] Leave', action: () => {} }
         ]);
     } else if (zoneName === 'Sope Creek') {
-        showDialog("Sope Creek Elementary", "Time to learn!", [
-            { label: 'Study (+Intel)', action: () => applyStatChange("Studying", 180, 40, { intel: 15 }), keepOpen: true },
-            { label: 'Leave', action: () => {} }
-        ]);
+        let btns = [
+            { label: '[1] Study (+Intel)', action: () => applyStatChange("Studying", 180, 40, { intel: 15, fun: -5 }), keepOpen: true }
+        ];
+        if (state.inTargetProgram) {
+            btns.push({ label: '[2] Target Math Question (Double Intel)', action: () => startTargetMath(), keepOpen: true });
+        } else {
+            btns.push({ label: '[2] Take Target Entry Test', action: () => startEntryMath(), keepOpen: true });
+        }
+        btns.push({ label: '[3] Leave', action: () => {} });
+        
+        showDialog("Sope Creek Elementary", "Time to learn!", btns);
     } else if (zoneName === 'Grace Marietta') {
-        showDialog("Grace Marietta Church", "Will and David are here! Hanging out restores energy fully and gives fun.", [
-            { label: 'Hang out (Heal)', action: () => { 
-                state.energy = state.maxEnergy; 
-                applyStatChange("Hanging Out", 60, 0, { fun: 50 }); 
+        showDialog("Grace Marietta Church", "Will and David are here! Hanging out fully restores Energy and Strength.", [
+            { label: '[1] Hang out with Will & David', action: () => { 
+                let roll = Math.random();
+                if (roll < 0.25) { // Fart
+                    applyStatChange("HUGE FART!", 30, 0, { intel: 0 }); // No bonuses, half time (assuming normal is 60)
+                } else if (roll < 0.50) { // Sleepover
+                    state.fun = 100;
+                    // Jump to 7 AM next day
+                    state.daysRemaining -= 1;
+                    state.clockMinutes = Math.floor(state.clockMinutes / (24 * 60)) * 24 * 60 + (24 * 60) + (7 * 60); 
+                    state.energy = state.maxEnergy;
+                    updateUI();
+                    showDialog("Sleepover!", "You spent the night! Energy restored, and you have +100 Fun for the whole next day!", [{label:"[1] Awesome", action:()=>{}}]);
+                } else {
+                    state.energy = state.maxEnergy;
+                    state.strength = state.strength + 20;
+                    applyStatChange("Hanging Out", 60, 0, { fun: 100, intel: -10 }); 
+                }
             }, keepOpen: true },
-            { label: 'Leave', action: () => {} }
+            { label: '[2] Leave', action: () => {} }
         ]);
     } else if (zoneName === 'Fugu Express') {
         showDialog("Fugu Express", "Welcome! Try to avoid the cheddar cheese and onions today.", [
-            { label: 'California Roll (50 Bits)', action: () => {
-                if(state.bits >= 50) { 
-                    state.bits -= 50; state.energy += 50; updateUI(); 
-                    showDialog("Yum!", "Ate a California Roll. Restored 50 Energy.", [{label:"Nice", action:()=>{}}]);
-                } else {
-                    showDialog("Insufficient Funds", "You don't have enough bits.", [{label:"Okay", action:()=>{}}]);
-                }
+            { label: '[1] California Roll ($25)', action: () => {
+                if(state.dollars >= 25) { 
+                    state.dollars -= 25; state.energy = Math.min(state.maxEnergy, state.energy + 50); updateUI(); 
+                    showDialog("Yum!", "Ate a California Roll. Restored 50 Energy.", [{label:"[1] Nice", action:()=>{}}]);
+                } else showDialog("Insufficient Funds", "You don't have enough.", [{label:"[1] Okay", action:()=>{}}]);
             }, keepOpen: true},
-            { label: state.character === 'Asher' ? 'Dumplings (75 Bits)' : 'Bento Box (75 Bits)', action: () => {
-                if(state.bits >= 75) { 
-                    state.bits -= 75; state.energy += 70; 
+            { label: state.character === 'Asher' ? '[2] Dumplings ($150)' : '[2] Bento Box ($150)', action: () => {
+                if(state.dollars >= 150) { 
+                    state.dollars -= 150; state.energy = Math.min(state.maxEnergy, state.energy + 100); 
                     if(state.character==='Asher') {
-                        state.dumplingTimer = 240; 
-                        showDialog("Dumpling Buff!", "Ate Dumplings. +70 Energy, and you have a massive stat-gain multiplier for the next 4 hours!", [{label:"Sweet!", action:()=>{}}]);
+                        state.fun = 100;
+                        showDialog("Dumpling Buff!", "Ate Dumplings. +100 Energy, and +100 Fun for the rest of the day!", [{label:"[1] Sweet!", action:()=>{}}]);
                     } else {
-                        state.hasBentoBonus = true;
-                        showDialog("Bento Buff!", "Ate Bento Box. +70 Energy, and the basketball minigame will permanently be slower and easier!", [{label:"Sweet!", action:()=>{}}]);
+                        state.fun = 50;
+                        state.hasBentoBonus = true; // Still give the basketball advantage
+                        showDialog("Bento Buff!", "Ate Bento Box. +100 Energy, +50 Fun, and basketball is easier today!", [{label:"[1] Sweet!", action:()=>{}}]);
                     }
                     updateUI(); 
-                } else {
-                    showDialog("Insufficient Funds", "You don't have enough bits.", [{label:"Okay", action:()=>{}}]);
-                }
+                } else showDialog("Insufficient Funds", "You don't have enough dollars.", [{label:"[1] Okay", action:()=>{}}]);
             }, keepOpen: true},
-            { label: 'Mystery Roll (10 Bits)', action: () => {
-                if(state.bits >= 10) {
-                    state.bits -= 10;
-                    if(Math.random() > 0.5) {
-                        state.energy -= 30; // Cheese/Onions!
-                        showDialog("Yuck!", "Diced onions and cheddar cheese! Lost 30 Energy.", [{label:"Gross", action:()=>{}}]);
-                    } else {
-                        state.energy += 40;
-                        showDialog("Lucky!", "It was delicious! Gained 40 Energy.", [{label:"Nice", action:()=>{}}]);
-                    }
-                    updateUI();
-                } else {
-                    showDialog("Insufficient Funds", "You don't have enough bits.", [{label:"Okay", action:()=>{}}]);
-                }
-            }, keepOpen: true},
-            { label: 'Leave', action: () => {} }
+            { label: '[3] Leave', action: () => {} }
         ]);
     } else if (zoneName === 'Home Depot') {
-        showDialog("Home Depot", "Buy materials for projects or work a shift.", [
-            { label: 'Work a shift (+Money)', action: () => applyStatChange("Working", 180, 50, { bits: 100 }), keepOpen: true },
-            { label: 'Leave', action: () => {} }
+        showDialog("Home Depot", "Buy materials for the treehouse.", [
+            { label: '[1] Buy 5 Nails ($5)', action: () => { if(state.dollars >= 5){ state.dollars -= 5; state.nails+=5; applyStatChange("Shopping", 15, 5, {fun: -5}); } }, keepOpen: true },
+            { label: '[2] Buy 5 Screws ($5)', action: () => { if(state.dollars >= 5){ state.dollars -= 5; state.screws+=5; applyStatChange("Shopping", 15, 5, {fun: -5}); } }, keepOpen: true },
+            { label: '[3] Buy 1 Lumber ($10)', action: () => { if(state.dollars >= 10){ state.dollars -= 10; state.lumber+=1; applyStatChange("Shopping", 15, 5, {fun: -5}); } }, keepOpen: true },
+            { label: '[4] Leave', action: () => {} }
         ]);
     } else if (zoneName === 'Taj House') {
         showDialog("Rohan & Taj's House", "Knock to see if they can play.", [
-            { label: 'Knock (30 mins)', action: () => {
+            { label: '[1] Knock (30 mins)', action: () => {
                 state.clockMinutes += 30;
                 state.energy -= 5;
                 if(Math.random() < 0.25) {
                     state.companion = Math.random() < 0.5 ? 'Rohan' : 'Taj';
-                    state.companionTimer = 300; // 5 hours
+                    state.fun = Math.min(100, state.fun + 50);
                     updateUI();
-                    showDialog("Recruited!", `${state.companion} is joining you! For the next 5 hours, you get a 50% stat boost on all activities!`, [{label:"Let's go!", action:()=>{}}]);
+                    showDialog("Recruited!", `${state.companion} is joining you! +50 Fun!`, [{label:"[1] Let's go!", action:()=>{}}]);
                 } else {
                     updateUI();
-                    showDialog("No Answer", "They aren't home right now. You wasted 30 minutes knocking.", [{label:"Bummer", action:()=>{}}]);
+                    showDialog("No Answer", "They aren't home right now. You wasted 30 minutes knocking.", [{label:"[1] Bummer", action:()=>{}}]);
                 }
             }, keepOpen: true},
-            { label: 'Leave', action: () => {} }
+            { label: '[2] Leave', action: () => {} }
         ]);
     } else if (zoneName === 'Sports Complex') {
         showDialog("Sports Complex", "Play some ball?", [
-            { label: 'Basketball Minigame', action: () => startBasketball(), keepOpen: true }, // Keep dialog open so startBasketball handles state transition properly!
-            { label: 'Leave', action: () => {} }
+            { label: '[1] Basketball Minigame', action: () => startBasketball(), keepOpen: true }, 
+            { label: '[2] Leave', action: () => {} }
         ]);
     } else if (zoneName === 'Wilderness') {
-        showDialog("Fall Creek Falls", "Hiking trail.", [
-            { label: 'Hike (+Str, +Fun)', action: () => applyStatChange("Hiking", 240, 60, { strength: 20, fun: 30, bits: 20 }), keepOpen: true },
-            { label: 'Leave', action: () => {} }
+        showDialog("Fall Creek Falls", "Hiking trail takes a FULL DAY (12 hours).", [
+            { label: '[1] Hike', action: () => applyStatChange("Hiking", 720, 80, { strength: 40, fun: 100 }), keepOpen: true },
+            { label: '[2] Leave', action: () => {} }
         ]);
     }
 }
@@ -436,6 +599,14 @@ function drawOverworld() {
         ctx.fillStyle = '#fff';
         ctx.font = '14px Verdana';
         ctx.fillText(z.label, z.x + 5, z.y + 20);
+        
+        if (z.name === 'Treehouse') {
+            ctx.font = '12px Verdana';
+            ctx.fillText(`Build: ${state.treehouseBuildCount}/10`, z.x + 5, z.y + 45);
+            ctx.fillText(`Couch: ${state.hasTreehouseCouch ? 'Yes' : 'No'}`, z.x + 5, z.y + 65);
+            ctx.fillText(`TV: ${state.hasTreehouseTV ? 'Yes' : 'No'}`, z.x + 5, z.y + 85);
+            ctx.fillText(`LEDs: ${state.hasTreehouseLEDs ? 'Yes' : 'No'}`, z.x + 5, z.y + 105);
+        }
     }
     
     // Draw NPCs
@@ -489,6 +660,60 @@ function drawStickFigure(x, y, headColor) {
     ctx.moveTo(x, y + 15);
     ctx.lineTo(x + 8, y + 25);
     ctx.stroke();
+}
+
+// ----------------------------------------------------
+// Minigame: Math (Sope Creek)
+// ----------------------------------------------------
+function startEntryMath() {
+    let a = Math.floor(Math.random() * 9) + 1;
+    let b = Math.floor(Math.random() * 9) + 1;
+    let correct = a * b;
+    generateMathOptions(a, b, correct, true);
+}
+
+function startTargetMath() {
+    let a = Math.floor(Math.random() * 9) + 1;
+    let b = Math.floor(Math.random() * 90) + 10;
+    let correct = a * b;
+    generateMathOptions(a, b, correct, false);
+}
+
+function generateMathOptions(a, b, correct, isEntry) {
+    let answers = [correct];
+    while(answers.length < 4) {
+        let wrong = correct + (Math.floor(Math.random() * 20) - 10);
+        if (wrong > 0 && !answers.includes(wrong)) {
+            answers.push(wrong);
+        }
+    }
+    // Shuffle
+    answers.sort(() => Math.random() - 0.5);
+    
+    let buttons = answers.map((ans, idx) => {
+        return {
+            label: `[${idx+1}] ${ans}`,
+            action: () => {
+                if (ans === correct) {
+                    if (isEntry) {
+                        state.inTargetProgram = true;
+                        applyStatChange("Math Test Passed!", 60, 10, { fun: 20 });
+                        setTimeout(() => {
+                            showDialog("Passed!", "You passed the entry test and are now in the Target Program!", [{label:"[1] Sweet", action:()=>{}}]);
+                        }, 100);
+                    } else {
+                        applyStatChange("Target Math", 180, 40, { intel: 30, fun: 10 });
+                    }
+                } else {
+                    applyStatChange("Math Test Failed", 60, 10, { fun: -10 });
+                }
+            },
+            keepOpen: true
+        }
+    });
+    
+    gameState = 'MINIGAME_MATH';
+    showDialog(`Math Test: ${a} x ${b} = ?`, "Choose the correct answer:", buttons);
 }
 
 // ----------------------------------------------------

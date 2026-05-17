@@ -27,18 +27,19 @@
     <!-- GAME UI -->
     <div id="gameUI" class="hidden">
         <div class="top-bar">
+            <div class="stat-box">Day: <span id="daysDisplay">30</span> left</div>
             <div class="stat-box">Time: <span id="clockDisplay">08:00 AM</span></div>
             <div class="stat-box">Energy: <span id="energyDisplay">100</span>/100</div>
-            <div class="stat-box">Intelligence: <span id="intelDisplay">0</span></div>
-            <div class="stat-box">Strength: <span id="strDisplay">0</span></div>
-            <div class="stat-box">Crafting: <span id="craftDisplay">0</span></div>
-            <div class="stat-box">Bits: <span id="bitsDisplay">0</span></div>
+            <div class="stat-box">Fun: <span id="funDisplay">0</span>%</div>
+            <div class="stat-box">Intel: <span id="intelDisplay">0</span></div>
+            <div class="stat-box">Str: <span id="strDisplay">0</span></div>
+            <div class="stat-box">Dollars: $<span id="dollarsDisplay">0</span></div>
             <button id="btnInstructions" class="dialog-btn" style="padding: 5px 10px; font-size: 14px;">Instructions</button>
         </div>
         
         <div class="inventory-bar">
             <strong>Companions:</strong> <span id="companionDisplay">None</span> |
-            <strong>Treehouse:</strong> <span id="treehouseDisplay">0%</span> |
+            <strong>Materials:</strong> Nails:<span id="nailsDisplay">0</span>, Screws:<span id="screwsDisplay">0</span>, Lumber:<span id="lumberDisplay">0</span> |
             <strong>Items:</strong> <span id="itemDisplay">None</span>
         </div>
     </div>
