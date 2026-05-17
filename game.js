@@ -625,12 +625,29 @@ function triggerZone(zoneName) {
             }, keepOpen: true},
             { label: '[3] Leave', action: () => {} }
         ]);
+function openHomeDepotStore() {
+    let msg = `You have:\n${state.nails} Nails\n${state.screws} Screws\n${state.lumber} Lumber\n\nWhat would you like to buy?`;
+    let updateStore = () => {
+        openHomeDepotStore();
+    };
+    
+    showDialog("Home Depot Store", msg, [
+        { label: '[1] Buy 5 Nails ($5)', action: () => { if(state.dollars >= 5){ state.dollars -= 5; state.nails+=5; updateUI(); updateStore(); } }, keepOpen: true },
+        { label: '[2] Buy 5 Screws ($5)', action: () => { if(state.dollars >= 5){ state.dollars -= 5; state.screws+=5; updateUI(); updateStore(); } }, keepOpen: true },
+        { label: '[3] Buy 1 Lumber ($10)', action: () => { if(state.dollars >= 10){ state.dollars -= 10; state.lumber+=1; updateUI(); updateStore(); } }, keepOpen: true },
+        { label: '[4] Leave', action: () => {} }
+    ]);
+}
+
     } else if (zoneName === 'Home Depot') {
-        showDialog("Home Depot", "Buy materials for the treehouse.", [
-            { label: '[1] Buy 5 Nails ($5)', action: () => { if(state.dollars >= 5){ state.dollars -= 5; state.nails+=5; applyStatChange("Shopping", 15, 5, {fun: -5}); } }, keepOpen: true },
-            { label: '[2] Buy 5 Screws ($5)', action: () => { if(state.dollars >= 5){ state.dollars -= 5; state.screws+=5; applyStatChange("Shopping", 15, 5, {fun: -5}); } }, keepOpen: true },
-            { label: '[3] Buy 1 Lumber ($10)', action: () => { if(state.dollars >= 10){ state.dollars -= 10; state.lumber+=1; applyStatChange("Shopping", 15, 5, {fun: -5}); } }, keepOpen: true },
-            { label: '[4] Leave', action: () => {} }
+        showDialog("Home Depot", "Going shopping at Home Depot takes 2 hours.", [
+            { label: '[1] Go Shopping (2 hours)', action: () => {
+                applyStatChange("Drove to Home Depot", 120, 10, { fun: -10 });
+                setTimeout(() => {
+                    openHomeDepotStore();
+                }, 100);
+            }, keepOpen: true },
+            { label: '[2] Leave', action: () => {} }
         ]);
     } else if (zoneName === 'Taj House') {
         showDialog("Rohan & Taj's House", "Knock to see if they can play.", [
@@ -935,7 +952,7 @@ function startDogCountdown(type) {
 }
 
 function drawDogCountdown(currentTime) {
-    ctx.fillStyle = '#111';
+    ctx.fillStyle = '#334155'; // Lighter slate color instead of #111
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Floor
@@ -969,7 +986,7 @@ function drawDogCountdown(currentTime) {
 }
 
 function drawDogGame() {
-    ctx.fillStyle = '#111';
+    ctx.fillStyle = '#334155'; // Lighter slate color instead of #111
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     ctx.fillStyle = '#fff';
