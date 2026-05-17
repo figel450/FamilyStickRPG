@@ -45,6 +45,7 @@ const state = {
     clockMinutes: 8 * 60, // 8:00 AM
     energy: 100,
     maxEnergy: 100,
+    maxEnergyBuffTimer: 0,
     intel: 0,
     strength: 0,
     dollars: 50,
@@ -307,6 +308,17 @@ function advanceTime(mins) {
     if (newDay > oldDay) {
         state.daysRemaining -= (newDay - oldDay);
     }
+    
+    if (state.maxEnergyBuffTimer > 0) {
+        state.maxEnergyBuffTimer -= mins;
+        if (state.maxEnergyBuffTimer <= 0) {
+            state.maxEnergyBuffTimer = 0;
+            state.maxEnergy = 100;
+            if (state.energy > state.maxEnergy) state.energy = state.maxEnergy;
+            updateUI();
+            showDialog("Energy Crash", "Brian's hype wore off. Your max energy returned to 100.", [{label:"[1] Okay", action:()=>{}}]);
+        }
+    }
 }
 
 function applyStatChange(actionName, timeCost, energyCost, statsMap) {
@@ -314,7 +326,9 @@ function applyStatChange(actionName, timeCost, energyCost, statsMap) {
     // Late night penalty: Double cost between 9:30 PM (1290 mins) and 7:00 AM (420 mins)
     if (currentMinsOfDay >= 1290 || currentMinsOfDay < 420) {
         timeCost *= 2;
-        energyCost *= 2;
+        if (energyCost > 0) {
+            energyCost *= 2;
+        }
     }
 
     advanceTime(timeCost);
@@ -580,25 +594,54 @@ function triggerZone(zoneName) {
         
         showDialog("Sope Creek Elementary", "Time to learn!", btns);
     } else if (zoneName === 'Grace Marietta') {
-        showDialog("Grace Marietta Church", "Will and David are here! Hanging out fully restores Energy and Strength.", [
-            { label: '[1] Hang out with Will & David', action: () => { 
-                let roll = Math.random();
-                if (roll < 0.25) { // Fart
-                    applyStatChange("HUGE FART!", 30, 0, { intel: 0 }); // No bonuses, half time (assuming normal is 60)
-                } else if (roll < 0.50) { // Sleepover
-                    state.fun = 100;
-                    // Jump to 7 AM next day
-                    state.daysRemaining -= 1;
-                    state.clockMinutes = Math.floor(state.clockMinutes / (24 * 60)) * 24 * 60 + (24 * 60) + (7 * 60); 
-                    state.energy = state.maxEnergy;
-                    updateUI();
-                    showDialog("Sleepover!", "You spent the night! Energy restored, and you have +100 Fun for the whole next day!", [{label:"[1] Awesome", action:()=>{}}]);
-                } else {
-                    state.energy = state.maxEnergy;
-                    state.strength = state.strength + 20;
-                    applyStatChange("Hanging Out", 60, 0, { fun: 100, intel: -10 }); 
+        showDialog("Grace Marietta Church", "Head to Sunday School and hang out with friends?", [
+            { label: '[1] Go to Church (2 hours)', action: () => { 
+                let friends = ["David", "Will", "Joey", "Brian"];
+                let friend = friends[Math.floor(Math.random() * friends.length)];
+                
+                let funBonus = 30;
+                let energyBonus = 50;
+                let intelBonus = 0;
+                
+                let events = [];
+                let friendRoll = Math.random();
+                if (friend === "David" && friendRoll < 0.25) {
+                    funBonus += 20;
+                    events.push("You played Minecraft with David! (+20 Extra Fun)");
+                } else if (friend === "Will" && friendRoll < 0.25) {
+                    funBonus += 20;
+                    events.push("You played Pokemon with Will! (+20 Extra Fun)");
+                } else if (friend === "Joey" && friendRoll < 0.25) {
+                    intelBonus += 100;
+                    events.push("Joey taught you something smart! (+100 Intelligence)");
+                } else if (friend === "Brian" && friendRoll < 0.25) {
+                    state.maxEnergy = 200;
+                    state.maxEnergyBuffTimer = 24 * 60;
+                    events.push("Brian hyped you up! (+100 Max Energy Cap for 24 hours)");
                 }
-            }, keepOpen: true },
+                
+                let globalRoll = Math.random();
+                if (globalRoll < 0.10) {
+                    funBonus = 0;
+                    events.push("Will had ridiculous asparagus pee! You lost the fun bonus.");
+                } else if (globalRoll >= 0.10 && globalRoll < 0.20) {
+                    funBonus = 100;
+                    energyBonus -= 20;
+                    events.push("David ripped an epic fart! (+100 Fun, -20 Energy)");
+                }
+                
+                let statsMap = { fun: funBonus };
+                if (intelBonus > 0) statsMap.intel = intelBonus;
+                
+                applyStatChange(`Church with ${friend}`, 120, -energyBonus, statsMap);
+                
+                if (events.length > 0) {
+                    setTimeout(() => {
+                        showDialog(`Hung out with ${friend}!`, events.join("\n\n"), [{label:"[1] Awesome", action:()=>{}}]);
+                    }, 200);
+                }
+                
+            }, keepOpen: true},
             { label: '[2] Leave', action: () => {} }
         ]);
     } else if (zoneName === 'Fugu Express') {
