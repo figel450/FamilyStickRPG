@@ -193,18 +193,16 @@ window.addEventListener('keyup', e => {
 // ----------------------------------------------------
 function formatTime(mins) {
     let h = Math.floor(mins / 60) % 24;
-    let m = Math.floor(mins % 60);
     let ampm = h >= 12 ? 'PM' : 'AM';
     h = h % 12;
     if (h === 0) h = 12;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`;
+    return `${h} ${ampm}`;
 }
 
 function formatDuration(mins) {
-    if (mins < 60) return `${mins} mins`;
-    let h = Math.floor(mins / 60);
-    let m = mins % 60;
-    return m > 0 ? `${h} hour${h > 1 ? 's' : ''} ${m} min${m > 1 ? 's' : ''}` : `${h} hour${h > 1 ? 's' : ''}`;
+    let h = Math.ceil(mins / 60);
+    if (h === 0) h = 1; // Minimum 1 hour
+    return `${h} hour${h > 1 ? 's' : ''}`;
 }
 
 function updateUI() {
@@ -325,12 +323,16 @@ function advanceTime(mins) {
 
 function applyStatChange(actionName, timeCost, energyCost, statsMap) {
     let currentMinsOfDay = state.clockMinutes % (24 * 60);
-    // Late night penalty: Double cost between 9:30 PM (1290 mins) and 7:00 AM (420 mins)
     if (currentMinsOfDay >= 1290 || currentMinsOfDay < 420) {
         timeCost *= 2;
         if (energyCost > 0) {
             energyCost *= 2;
         }
+    }
+
+    if (energyCost > 0) {
+        energyCost = Math.floor(energyCost * (1 - (state.fun / 100)));
+        if (energyCost < 0) energyCost = 0;
     }
 
     advanceTime(timeCost);
@@ -496,7 +498,7 @@ function triggerZone(zoneName) {
         const actionStr = state.character === 'Elliot' ? '[1] Solder Circuits' : '[1] Play Minecraft';
         
         showDialog("Home Office", "The L-shaped pine desk and midnight blue walls.", [
-            { label: actionStr, action: () => applyStatChange(state.character==='Elliot'?"Soldering":"Minecraft", 60, 15, { intel: 5, fun: 20 }), keepOpen: true },
+            { label: actionStr, action: () => applyStatChange(state.character==='Elliot'?"Soldering":"Minecraft", 120, 15, { intel: 5, fun: 20 }), keepOpen: true },
             { label: '[2] Take Free TV', action: () => {
                 if (state.treehouseBuildCount < 10) {
                     showDialog("Not Ready", "You need to finish building the physical treehouse first before installing the TV!", [{label:"[1] Okay", action:()=>{}}]);
@@ -521,7 +523,7 @@ function triggerZone(zoneName) {
                         state.hasAirlessBall = true; updateUI(); 
                         showDialog("Success!", "You printed an Airless Basketball!", [{label:"[1] Sweet!", action:()=>{}}]);
                     } else {
-                        applyStatChange("Failed Print", 0, 0, { fun: -25 });
+                        applyStatChange("Failed Print", 180, 0, { fun: -25 });
                     }
                 } else showDialog("Insufficient Funds", "You don't have enough dollars.", [{label:"[1] Okay", action:()=>{}}]);
             }, keepOpen: true},
@@ -533,7 +535,7 @@ function triggerZone(zoneName) {
                         state.has3DShoes = true; updateUI(); 
                         showDialog("Success!", "You printed 3D Shoes!", [{label:"[1] Sweet!", action:()=>{}}]);
                     } else {
-                        applyStatChange("Failed Print", 0, 0, { fun: -25 });
+                        applyStatChange("Failed Print", 180, 0, { fun: -25 });
                     }
                 } else showDialog("Insufficient Funds", "You don't have enough dollars.", [{label:"[1] Okay", action:()=>{}}]);
             }, keepOpen: true},
@@ -545,7 +547,7 @@ function triggerZone(zoneName) {
                         state.hasDogToy = true; updateUI(); 
                         showDialog("Success!", "You printed a Dog Toy! This will distract dogs.", [{label:"[1] Sweet!", action:()=>{}}]);
                     } else {
-                        applyStatChange("Failed Print", 0, 0, { fun: -25 });
+                        applyStatChange("Failed Print", 180, 0, { fun: -25 });
                     }
                 } else showDialog("Insufficient Funds", "You don't have enough dollars.", [{label:"[1] Okay", action:()=>{}}]);
             }, keepOpen: true},
@@ -578,7 +580,7 @@ function triggerZone(zoneName) {
         ]);
     } else if (zoneName === 'Sope Creek') {
         let btns = [
-            { label: '[1] Study (+Intel)', action: () => applyStatChange("Studying", 180, 40, { intel: 15, fun: -5 }), keepOpen: true }
+            { label: '[1] Study (+Intel)', action: () => applyStatChange("Studying", 480, 40, { intel: 15, fun: -5 }), keepOpen: true }
         ];
         
         btns.push({ label: '[2] Take Target Entrance Exam (Needs 200 INT)', action: () => {
@@ -772,7 +774,7 @@ Lumber: ${state.lumber}
         ]);
     } else if (zoneName === 'Wilderness') {
         showDialog("Fall Creek Falls", "Hiking trail takes a FULL DAY (12 hours).", [
-            { label: '[1] Hike', action: () => applyStatChange("Hiking", 720, 80, { strength: 40, fun: 100 }), keepOpen: true },
+            { label: '[1] Hike', action: () => applyStatChange("Hiking", 1440, 80, { strength: 40, fun: 100 }), keepOpen: true },
             { label: '[2] Leave', action: () => {} }
         ]);
     }
@@ -1006,7 +1008,7 @@ function animateBasketball() {
             setTimeout(() => {
                 basketballUI.classList.add('hidden');
                 state.y += 10; // bounce back
-                applyStatChange("Basketball", 15, 10, { strength: 10 });
+                applyStatChange("Basketball", 60, 10, { strength: 10 });
             }, 1000);
         } else {
             bballMessage.innerText = "BRICK! Missed.";
@@ -1014,7 +1016,7 @@ function animateBasketball() {
             setTimeout(() => {
                 basketballUI.classList.add('hidden');
                 state.y += 10; // bounce back
-                applyStatChange("Basketball", 15, 10, { strength: 2 });
+                applyStatChange("Basketball", 60, 10, { strength: 2 });
             }, 1000);
         }
         return;
